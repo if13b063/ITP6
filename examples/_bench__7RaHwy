@@ -1,0 +1,6 @@
+[tablix] PGA using 4 nodes on 1 host
+tablix2: No such file or directory
+[tablix] Failed to send problem description 'sample.xml' to computing nodes
+TABLIX version 0.3.5, PGA general timetable solver
+Copyright (C) 2002-2006 Tomaz Solc
+

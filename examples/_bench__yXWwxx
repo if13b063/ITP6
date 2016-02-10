@@ -1,0 +1,18 @@
+[tablix] PGA using 8 nodes on 1 host
+TABLIX version 0.3.5, PGA general timetable solver
+Copyright (C) 2002-2006 Tomaz Solc
+
+[xxxxx] kernel: I have 497 tuples
+[40050] reports 82583 (0) at 1, inf GPM, 00:00:00 elapsed, 8/8 running 
+[40052] reports 78402 (0) at 7, 3300,0 GPM, 00:00:01 elapsed, 8/8 running 
+[40052] reports 54852 (0) at 37, 8850,0 GPM, 00:00:02 elapsed, 8/8 running 
+[tablix] receiving population from 40051
+[tablix] receiving population from 40050
+[tablix] receiving population from 4004d
+[tablix] receiving population from 4004f
+[tablix] receiving population from 4004e
+[tablix] receiving population from 40052
+[tablix] receiving population from 40053
+[tablix] receiving population from 4004c
+[tablix] Received interrupt
+[tablix] No results were received

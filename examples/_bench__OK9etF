@@ -1,0 +1,59 @@
+[tablix] PGA using 4 nodes on 1 host
+TABLIX version 0.3.5, PGA general timetable solver
+Copyright (C) 2002-2006 Tomaz Solc
+
+[xxxxx] kernel: I have 497 tuples
+[40025] reports 87151 (0) at 1, inf GPM, 00:00:00 elapsed, 4/4 running 
+[40025] reports 61700 (0) at 29, 5700,0 GPM, 00:00:01 elapsed, 4/4 running 
+[40024] reports 51327 (0) at 51, 7560,0 GPM, 00:00:02 elapsed, 4/4 running 
+[40023] reports 30865 (0) at 110, 8300,0 GPM, 00:00:03 elapsed, 4/4 running 
+[40024] reports 25714 (0) at 115, 8700,0 GPM, 00:00:04 elapsed, 4/4 running 
+[40023] reports 18819 (0) at 211, 8940,0 GPM, 00:00:05 elapsed, 4/4 running 
+[40024] reports 13775 (0) at 191, 9330,0 GPM, 00:00:06 elapsed, 4/4 running 
+[40026] reports 10936 (0) at 324, 9660,0 GPM, 00:00:07 elapsed, 4/4 running 
+[40024] reports 8643 (0) at 290, 9937,5 GPM, 00:00:08 elapsed, 4/4 running 
+[40023] reports 8067 (0) at 411, 10026,7 GPM, 00:00:09 elapsed, 4/4 running 
+[40024] reports 7241 (0) at 373, 10116,0 GPM, 00:00:10 elapsed, 4/4 running 
+[40024] reports 7021 (0) at 429, 10134,5 GPM, 00:00:11 elapsed, 4/4 running 
+[40025] reports 6622 (0) at 514, 10135,0 GPM, 00:00:12 elapsed, 4/4 running 
+[40025] reports 6508 (0) at 568, 10130,8 GPM, 00:00:13 elapsed, 4/4 running 
+[40025] reports 6275 (0) at 618, 10208,6 GPM, 00:00:14 elapsed, 4/4 running 
+[40026] reports 6171 (0) at 639, 10380,0 GPM, 00:00:15 elapsed, 4/4 running 
+[40026] reports 6044 (0) at 687, 10477,5 GPM, 00:00:16 elapsed, 4/4 running 
+[40025] reports 5852 (0) at 771, 10545,9 GPM, 00:00:17 elapsed, 4/4 running 
+[40025] reports 5727 (0) at 813, 10623,3 GPM, 00:00:18 elapsed, 4/4 running 
+[40026] reports 5662 (0) at 843, 10591,6 GPM, 00:00:19 elapsed, 4/4 running 
+[40023] reports 5578 (0) at 899, 10572,0 GPM, 00:00:20 elapsed, 4/4 running 
+[40026] reports 5582 (0) at 947, 10565,7 GPM, 00:00:21 elapsed, 4/4 running 
+[40025] reports 5492 (0) at 956, 10636,4 GPM, 00:00:22 elapsed, 4/4 running 
+[40026] reports 5401 (0) at 1051, 10742,6 GPM, 00:00:23 elapsed, 4/4 running 
+[40026] reports 5369 (0) at 1105, 10715,0 GPM, 00:00:24 elapsed, 4/4 running 
+[40023] reports 5336 (0) at 1166, 10723,2 GPM, 00:00:25 elapsed, 4/4 running 
+[40025] reports 5218 (0) at 1119, 10772,3 GPM, 00:00:26 elapsed, 4/4 running 
+[40023] reports 5156 (0) at 1278, 10817,8 GPM, 00:00:27 elapsed, 4/4 running 
+[40025] reports 5099 (0) at 1219, 10855,7 GPM, 00:00:28 elapsed, 4/4 running 
+[40026] reports 5061 (0) at 1365, 10915,9 GPM, 00:00:29 elapsed, 4/4 running 
+[40025] reports 4848 (1) at 1319, 10982,0 GPM, 00:00:30 elapsed, 4/4 running 
+[40025] reports 4831 (1) at 1374, 11057,4 GPM, 00:00:31 elapsed, 4/4 running 
+[40025] reports 4815 (1) at 1443, 11150,6 GPM, 00:00:32 elapsed, 4/4 running 
+[40026] reports 4812 (1) at 1570, 11200,0 GPM, 00:00:33 elapsed, 4/4 running 
+[40026] reports 4784 (1) at 1637, 11202,4 GPM, 00:00:34 elapsed, 4/4 running 
+[40026] reports 4778 (1) at 1706, 11226,9 GPM, 00:00:35 elapsed, 4/4 running 
+[40026] reports 4755 (1) at 1764, 11240,0 GPM, 00:00:36 elapsed, 4/4 running 
+[40025] reports 4757 (1) at 1755, 11252,4 GPM, 00:00:37 elapsed, 4/4 running 
+[40024] reports 4748 (1) at 1676, 11240,5 GPM, 00:00:38 elapsed, 4/4 running 
+[40024] reports 4742 (1) at 1710, 11243,1 GPM, 00:00:39 elapsed, 4/4 running 
+[40026] reports 4728 (1) at 2006, 11248,5 GPM, 00:00:40 elapsed, 4/4 running 
+[40025] reports 4722 (1) at 1975, 11250,7 GPM, 00:00:41 elapsed, 4/4 running 
+[40026] reports 4701 (1) at 2148, 11257,1 GPM, 00:00:42 elapsed, 4/4 running 
+[40023] reports 4679 (1) at 1952, 11344,2 GPM, 00:00:43 elapsed, 4/4 running 
+[40023] reports 4677 (1) at 2039, 11477,7 GPM, 00:00:44 elapsed, 4/4 running 
+[40023] reports 4639 (1) at 2071, 11465,3 GPM, 00:00:45 elapsed, 4/4 running 
+[40024] reports 4617 (1) at 2073, 11504,3 GPM, 00:00:46 elapsed, 4/4 running 
+[40024] reports 4608 (1) at 2140, 11518,7 GPM, 00:00:47 elapsed, 4/4 running 
+[tablix] receiving population from 40026
+[tablix] receiving population from 40024
+[tablix] receiving population from 40025
+[tablix] receiving population from 40023
+[tablix] Received interrupt
+[tablix] No results were received
