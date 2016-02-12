@@ -51,20 +51,31 @@
 #include "error.h"
 #include "assert.h"
 
-#ifdef HAVE_LIBPVM3
+#ifdef USE_MPI
 #include "nodes.h"
+
+//#elifdef HAVE_LIBPVM3
+//  #include "nodes.h"
 #endif
 
 char *cmd;
 char prefix[256];
 
-#ifdef HAVE_LIBPVM3
+#ifdef USE_MPI
 int ctrlc;
 int timeout_reached;
 
 int numlocals;
 int maxlocals;
 struct timeval t;
+
+//#elifdef HAVE_LIBPVM3
+//  int ctrlc;
+//  int timeout_reached;
+//
+//  int numlocals;
+//  int maxlocals;
+//  struct timeval t;
 #endif
 
 void print_copyright()
@@ -90,8 +101,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA\n"));
 
         printf("$Id: master.c,v 1.58 2006-08-29 14:32:24 avian Exp $\n");
         printf(_("Compile time options:\n"));
-        #ifdef HAVE_LIBPVM3
+
+        #ifdef USE_MPI
         printf(_("\tParallel genetic algorithm (using PVM3)\n"));
+
+//        #elifdef HAVE_LIBPVM3
+//          printf(_("\tParallel genetic algorithm (using PVM3)\n"));
         #else
         printf(_("\tLinear genetic algorith (debug mode)\n"));
         #endif
@@ -113,9 +128,14 @@ void print_syntax()
 {
         printf(_("Usage: %s [OPTION]... [FILE]\n"), cmd);
         printf("\n");
-        #ifdef HAVE_LIBPVM3
+
+        #ifdef USE_MPI
         printf(_("\
   -n NODES              set number of computing nodes (default 4)\n"));
+
+        #elifdef HAVE_LIBPVM3
+//          printf(_("\
+//    -n NODES              set number of computing nodes (default 4)\n"));
         #endif
 
         printf(_("\
@@ -125,11 +145,17 @@ void print_syntax()
   -v                    display version, compile time options and\n\
                         copyright information\n"));
 
-	#ifdef HAVE_LIBPVM3
+  #ifdef USE_MPI
 	printf(_("\
   -l NODES              set number of computing nodes that are allowed to\n\
                         simultaneously perform local search (set to -1 for \n\
                         no limit or 0 to disable local search. Default 1)\n"));
+
+//	#elifdef HAVE_LIBPVM3
+//    printf(_("\
+//    -l NODES              set number of computing nodes that are allowed to\n\
+//                          simultaneously perform local search (set to -1 for \n\
+//                          no limit or 0 to disable local search. Default 1)\n"));
 	#endif
 
 	printf(_("\
@@ -148,7 +174,7 @@ void print_syntax()
         exit(0);
 }
 
-#ifdef HAVE_LIBPVM3
+#ifdef USE_MPI
 void sighandler(int num)
 {
         int c;
@@ -166,6 +192,25 @@ void sighandler(int num)
                 exit(1);
         }
 }
+
+//#elifdef HAVE_LIBPVM3
+//  void sighandler(int num)
+//  {
+//          int c;
+//
+//    if(num==SIGALRM) {
+//      timeout_reached=1;
+//    }
+//          if (ctrlc<1) {
+//                  pvm_initsend(0);
+//                  c=0;
+//                  pvm_pkint(&c, 1, 1);
+//                  pvm_mcast(nodetid, nodenum, MSG_SENDPOP);
+//                  ctrlc++;
+//          } else {
+//                  exit(1);
+//          }
+//  }
 #endif
 
 int main(int argc, char *argv[])
@@ -173,7 +218,8 @@ int main(int argc, char *argv[])
 	char *loc=NULL;
 
         int c;
-        #ifdef HAVE_LIBPVM3
+
+        #ifdef USE_MPI
         int d, a, msgtag, sender, sendernum;
 	int n;
 
@@ -197,6 +243,31 @@ int main(int argc, char *argv[])
         #ifdef HAVE_CONV
         FILE **convfiles;
         #endif
+
+//        #elifdef HAVE_LIBPVM3
+//        int d, a, msgtag, sender, sendernum;
+//	int n;
+//
+//        double sum;
+//        int running;
+//	int nodereq;
+//        int restore;
+//
+//        int *subtotals;
+//	int gnum;
+//
+//	struct timeval start,end;
+//        char *buff;
+//	char *module;
+//        char fn[256];
+//
+//	int timeout;
+//
+//	population *pop=NULL;
+//
+//        #ifdef HAVE_CONV
+//        FILE **convfiles;
+//        #endif
         #endif
 
         cmd=argv[0];
@@ -205,12 +276,19 @@ int main(int argc, char *argv[])
         strcpy(prefix, "./");
 	verbosity=102;
 
-        #ifdef HAVE_LIBPVM3
+        #ifdef USE_MPI
         restore=0;
 	maxlocals=1;
 	nodereq=4;
 
 	timeout=0;
+
+//        #elifdef HAVE_LIBPVM3
+//        restore=0;
+//	maxlocals=1;
+//	nodereq=4;
+//
+//	timeout=0;
         #endif
 
 	#ifdef HAVE_SETLOCALE
@@ -236,7 +314,7 @@ int main(int argc, char *argv[])
                                   exit(0);
                         case 'o': strncpy(prefix, optarg, 256);
                                   break;
-                        #ifdef HAVE_LIBPVM3
+                        #ifdef USE_MPI
                         case 'l': sscanf(optarg, "%d", &maxlocals);
                                   break;
                         case 'n': sscanf(optarg, "%d", &nodereq);
@@ -248,6 +326,19 @@ int main(int argc, char *argv[])
 				  break;
 			case 't': sscanf(optarg, "%d", &timeout);
 				  break;
+
+//                        #elifdef HAVE_LIBPVM3
+//                        case 'l': sscanf(optarg, "%d", &maxlocals);
+//                                  break;
+//                        case 'n': sscanf(optarg, "%d", &nodereq);
+//                                  break;
+//                        case 'r': restore=1;
+//                                  break;
+//			case 'd': sscanf(optarg, "%d", &verbosity);
+//				  verbosity+=100;
+//				  break;
+//			case 't': sscanf(optarg, "%d", &timeout);
+//				  break;
                         #endif
                 }
         }
@@ -264,11 +355,17 @@ int main(int argc, char *argv[])
                 fatal(_("Missing file name. Try '%s -h' for more information."), cmd);
         }
 
-        #ifndef HAVE_LIBPVM3
+        #ifndef USE_MPI
         execvp("tablix2_kernel", argv);
 
         perror(cmd);
         exit(1);
+
+//        #elifndef HAVE_LIBPVM3
+//        execvp("tablix2_kernel", argv);
+//
+//        perror(cmd);
+//        exit(1);
         #else
 
         /*** Start nodes ***/
