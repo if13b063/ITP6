@@ -28,9 +28,14 @@
 #include "config.h"
 #endif
 
-#ifdef HAVE_LIBPVM3
+#ifdef USE_MPI
+    #include "mpi.h"
+/*
+#elifdef HAVE_LIBPVM3
   #include <pvm3.h>
+*/
 #endif
+
 
 #include "assert.h"
 #include "main.h"
@@ -76,7 +81,7 @@ static void table_mate(table *s1, table *s2, table *d1, table *d2)
 
 	for(typeid=0;typeid<s1->typenum;typeid++) if(dat_restype[typeid].var) {
         	a=rand()%tuplenum;
-        	
+
 		for(c=0;c<tuplenum;c++) {
         	        if (c<a) {
 	                        d1->chr[typeid].gen[c]=s2->chr[typeid].gen[c];
@@ -86,7 +91,7 @@ static void table_mate(table *s1, table *s2, table *d1, table *d2)
 	                        d1->chr[typeid].gen[c]=s1->chr[typeid].gen[c];
 	                }
 		}
-        }  
+        }
 
         d1->fitness=FITNESS_UNDEF_IN_CACHE;
         d2->fitness=FITNESS_UNDEF_IN_CACHE;
@@ -119,7 +124,7 @@ static void table_mutate(table *t1)
 	        t1->chr[typeid].gen[tuple1]=t1->chr[typeid].gen[tuple2];
 	        t1->chr[typeid].gen[tuple2]=temp;
 	}
-	
+
         t1->fitness=FITNESS_UNDEF;
 }
 
@@ -156,7 +161,7 @@ static int table_compare(const void *t1, const void *t2)
         return((*(table **)t1)->fitness-(*(table **)t2)->fitness);
 }
 
-/** @brief Makes a new generation in the population. 
+/** @brief Makes a new generation in the population.
  *
  * @param pop Pointer to the population struct. */
 void new_generation(population *pop)
@@ -171,16 +176,21 @@ void new_generation(population *pop)
 
 	int t1,t2,t3;
 
-	#ifdef HAVE_LIBPVM3
+    #ifdef USE_MPI
 	int migrsize;
+/*
+	#elifdef HAVE_LIBPVM3
+	int migrsize;
+*/
 	#endif
+
 
 	tables=pop->tables;
 	size=pop->size;
 
 	/* Send migration */
 
-	#ifdef HAVE_LIBPVM3
+	#ifdef USE_MPI
 	if (pop->gencnt%par_migrtime==0) {
 		debug(_("sending migration to %x"), sibling);
 
@@ -191,9 +201,22 @@ void new_generation(population *pop)
 
 		table_send(pop, migrsize, sibling, MSG_MIGRATION);
 	}
+/*
+	#elifdef HAVE_LIBPVM3
+	if (pop->gencnt%par_migrtime==0) {
+		debug(_("sending migration to %x"), sibling);
+
+		migrsize=size/par_migrpart;
+
+		pvm_initsend(0);
+		pvm_send(sibling, MSG_MIGRATION);
+
+		table_send(pop, migrsize, sibling, MSG_MIGRATION);
+	}
+*/
 	#endif
 
-	/* Check for sequences of equally fitnessd chromosomes. If a sequence 
+	/* Check for sequences of equally fitnessd chromosomes. If a sequence
 	 * of more than MAXEQUAL chromosomes is found, assign a very high
 	 * fitness to them */
 
@@ -240,7 +263,7 @@ void new_generation(population *pop)
                 t1=rand()%(size/2);
                 table_mutate(tables[t1]);
         }
- 
+
         for(n=0;n<(size/2/par_randpart);n++) {
                 t1=rand()%(size/2);
                 table_rand(tables[t1]);
@@ -248,7 +271,7 @@ void new_generation(population *pop)
 
 	/* Receive migration */
 
-	#ifdef HAVE_LIBPVM3
+    #ifdef USE_MPI
         if ((n=pvm_nrecv(-1, MSG_MIGRATION))>0) {
 		int msgtag, sender;
 
@@ -259,6 +282,19 @@ void new_generation(population *pop)
 
 		table_recv(pop, migrsize, -1, MSG_MIGRATION);
         }
+/*
+	#elifdef HAVE_LIBPVM3
+        if ((n=pvm_nrecv(-1, MSG_MIGRATION))>0) {
+		int msgtag, sender;
+
+                pvm_bufinfo(n, NULL, &msgtag, &sender);
+		debug("receiving migration from %x", sender);
+
+		migrsize=size/par_migrpart;
+
+		table_recv(pop, migrsize, -1, MSG_MIGRATION);
+        }
+*/
 	#endif
 
 	/* Assign fitness to each chromosome */

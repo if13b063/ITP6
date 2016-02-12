@@ -32,8 +32,12 @@
 #include <locale.h>
 #endif
 
-#ifdef HAVE_LIBPVM3
+#ifdef USE_MPI
+    #include "mpi.h"
+/*
+#elifdef HAVE_LIBPVM3
   #include <pvm3.h>
+*/
 #else
   #include <signal.h>
 #endif
@@ -67,7 +71,7 @@ char *prefix;
 FILE *convfile;
 #endif
 
-#ifndef HAVE_LIBPVM3
+#ifndef USE_MPI
 static void sighandler(int num)
 {
         if (ctrlc<1) {
@@ -79,7 +83,7 @@ static void sighandler(int num)
 
 /* Concatenate prefix and filename. Required memory is allocated and
  * must be freed after use. */
-static char *addprefix(char *prefix, char *filename) 
+static char *addprefix(char *prefix, char *filename)
 {
 	int c;
 	char *result;
@@ -93,6 +97,34 @@ static char *addprefix(char *prefix, char *filename)
 
 	return(result);
 }
+/*
+#elifndef HAVE_LIBPVM3
+static void sighandler(int num)
+{
+        if (ctrlc<1) {
+                ctrlc++;
+        } else {
+                exit(1);
+        }
+}
+
+/* Concatenate prefix and filename. Required memory is allocated and
+ * must be freed after use. *
+static char *addprefix(char *prefix, char *filename)
+{
+	int c;
+	char *result;
+
+	assert(prefix!=NULL);
+	assert(filename!=NULL);
+
+	c=strlen(prefix)+strlen(filename)+1;
+	result=malloc(sizeof(*result)*c);
+       	sprintf(result, "%s%s", prefix, filename);
+
+	return(result);
+}
+*/
 #endif
 
 static int lsearch_domain_check(int tupleid, int typeid, int resid)
@@ -139,12 +171,12 @@ static void lsearch_table(table *t)
 		step_tuple=-1;
 		step_res=-1;
 
-		for(typeid=0;typeid<t->typenum;typeid++) 
+		for(typeid=0;typeid<t->typenum;typeid++)
 		if(dat_restype[typeid].var) {
-			
+
 			c=&t->chr[typeid];
 			resnum=c->restype->resnum;
-			
+
 			for(tupleid=0;tupleid<c->gennum;tupleid++) {
 
 				oldgen=c->gen[tupleid];
@@ -158,7 +190,7 @@ static void lsearch_table(table *t)
 
 					if(t->fitness<best_fitness) {
 						step_type=typeid;
-						step_tuple=tupleid;	
+						step_tuple=tupleid;
 						step_res=newgen;
 						best_fitness=t->fitness;
 					}
@@ -172,7 +204,7 @@ static void lsearch_table(table *t)
 
 					if(t->fitness<best_fitness) {
 						step_type=typeid;
-						step_tuple=tupleid;	
+						step_tuple=tupleid;
 						step_res=newgen;
 						best_fitness=t->fitness;
 					}
@@ -198,7 +230,7 @@ static void lsearch_table(table *t)
 	debug("End local search");
 
 	#ifdef DEBUG
-	{ 
+	{
 		int cur_fitness;
 
 		cur_fitness=t->fitness;
@@ -224,7 +256,7 @@ void main_rand_init()
 
         gettimeofday(&t, NULL);
 
-        srand(t.tv_usec);  
+        srand(t.tv_usec);
 	debug("Initializing random generator with seed: %d", t.tv_usec);
 }
 
@@ -238,9 +270,14 @@ int main_loop()
 	int c;
         int g1, g2;
 
+    #ifndef USE_MPI
+	char *filename;
+	int b;
+/*
 	#ifndef HAVE_LIBPVM3
 	char *filename;
 	int b;
+*/
 	#endif
 
 	table **tables;
@@ -256,9 +293,19 @@ int main_loop()
 
 		tables=pop->tables;
 
-        	/* Save population if interrupt was received */ 
+        	/* Save population if interrupt was received */
 
-		#ifdef HAVE_LIBPVM3
+#ifdef USE_MPI
+	        if(pvm_nrecv(parent, MSG_SENDPOP)>0) {
+	                pvm_initsend(0);
+                	pvm_send(parent, MSG_POPDATA);
+
+			population_send(pop, parent, MSG_POPDATA);
+
+			return(1);
+		}
+/*
+		#elifdef HAVE_LIBPVM3
 	        if(pvm_nrecv(parent, MSG_SENDPOP)>0) {
 	                pvm_initsend(0);
                 	pvm_send(parent, MSG_POPDATA);
@@ -275,11 +322,21 @@ int main_loop()
 
 			return(1);
 	        }
+*/
        		#endif
 
 		/* Report the current state of the population */
 
-        	#ifdef HAVE_LIBPVM3
+            #ifdef USE_MPI
+        	pvm_initsend(0);
+        	pvm_pkint(&tables[0]->fitness, 1, 1);
+        	pvm_pkint(&pop->gencnt, 1, 1);
+        	pvm_pkint(&tables[0]->possible, 1, 1);
+        	pvm_pkint(tables[0]->subtotals, mod_fitnessnum, 1);
+        	pvm_send(parent, MSG_REPORT);
+
+/*
+        	#elifdef HAVE_LIBPVM3
         	pvm_initsend(0);
         	pvm_pkint(&tables[0]->fitness, 1, 1);
         	pvm_pkint(&pop->gencnt, 1, 1);
@@ -302,8 +359,9 @@ int main_loop()
 		}
 		fprintf(convfile, "\n");
         	fflush(convfile);
+*/
         	#endif
-		
+
 		/* Update the counter of the number of consequential
 		 * equally fitnessd generations */
 
@@ -314,33 +372,55 @@ int main_loop()
 
 		/* Stop the main loop if the parent process was killed */
 
-        	#ifdef HAVE_LIBPVM3
+            #ifdef USE_MPI
         	if (pvm_nrecv(-1, MSG_MASTERKILL)>0) {
 			return(2);
         	}
+/*
+        	#elifdef HAVE_LIBPVM3
+        	if (pvm_nrecv(-1, MSG_MASTERKILL)>0) {
+			return(2);
+        	}
+*/
         	#endif
 
-		/* Do a local search if the counter reached 
+		/* Do a local search if the counter reached
 		 * local search treshold */
 
 		if (g2==par_localtresh) {
 			c=1;
-			#ifdef HAVE_LIBPVM3
+			#ifdef USE_MPI
 			pvm_initsend(0);
 			pvm_pkint(&c, 1, 1);
 			pvm_send(parent, MSG_LOCALSYN);
 
 			pvm_recv(parent, MSG_LOCALACK);
 			pvm_upkint(&c, 1, 1);
+/*
+			#elifdef HAVE_LIBPVM3
+			pvm_initsend(0);
+			pvm_pkint(&c, 1, 1);
+			pvm_send(parent, MSG_LOCALSYN);
+
+			pvm_recv(parent, MSG_LOCALACK);
+			pvm_upkint(&c, 1, 1);
+*/
 			#endif
 
 			if (c) {
 				lsearch_table(tables[0]);
-				#ifdef HAVE_LIBPVM3
+				#ifdef USE_MPI
 				c=0;
 				pvm_initsend(0);
 				pvm_pkint(&c, 1, 1);
 				pvm_send(parent, MSG_LOCALSYN);
+/*
+				#elifdef HAVE_LIBPVM3
+				c=0;
+				pvm_initsend(0);
+				pvm_pkint(&c, 1, 1);
+				pvm_send(parent, MSG_LOCALSYN);
+*/
 				#endif
 			}
 		}
@@ -358,19 +438,25 @@ int main_loop()
 			return(0);
 		}
 
-	        /* Get a task id of another node that will receive 
+	        /* Get a task id of another node that will receive
 		 * migration from this node */
-
-		#ifdef HAVE_LIBPVM3
+		 #ifdef USE_MPI
         	if (pvm_nrecv(parent, MSG_SIBLING)>0) {
                 	pvm_upkint(&sibling, 1, 1);
 			debug(_("New sibling %x"), sibling);
 	        }
+/*
+		#elifdef HAVE_LIBPVM3
+        	if (pvm_nrecv(parent, MSG_SIBLING)>0) {
+                	pvm_upkint(&sibling, 1, 1);
+			debug(_("New sibling %x"), sibling);
+	        }
+*/
 		#endif
         }
 }
 
-#ifdef HAVE_LIBPVM3
+#ifdef USE_MPI
 static void send_fitness_info()
 {
 	int n;
@@ -390,6 +476,28 @@ static void send_fitness_info()
 
         pvm_send(parent, MSG_MODINFO);
 }
+/*
+#elifdef HAVE_LIBPVM3
+static void send_fitness_info()
+{
+	int n;
+	fitnessfunc *cur;
+
+        pvm_initsend(0);
+        pvm_pkint(&mod_fitnessnum, 1, 1);
+
+	n=0;
+	for(cur=mod_fitnessfunc;cur!=NULL;cur=cur->next) {
+		pvm_pkstr(cur->name);
+		pvm_pkint(&cur->man, 1, 1);
+		n++;
+	}
+
+	assert(n==mod_fitnessnum);
+
+        pvm_send(parent, MSG_MODINFO);
+}
+*/
 #endif
 
 int main(int argc, char *argv[])
@@ -403,15 +511,19 @@ int main(int argc, char *argv[])
 
         FILE *saved;
 
-        #ifdef HAVE_LIBPVM3
+    #ifdef USE_MPI
+	char *locale;
+/*
+        #elifdef HAVE_LIBPVM3
 	char *locale;
         #else
 	int timeout;
         char *filename;
+*/
         #endif
 
 	/* Set default locale */
-	    
+
 	#ifdef HAVE_SETLOCALE
 	setlocale(LC_ALL, "");
 	#endif
@@ -428,23 +540,38 @@ int main(int argc, char *argv[])
 
         /* Parse command line options */
 
-	#ifndef HAVE_LIBPVM3
+	#ifndef USE_MPI
         prefix="./";
         restore=0;
 	timeout=0;
+/*
+	#elifndef HAVE_LIBPVM3
+        prefix="./";
+        restore=0;
+	timeout=0;
+*/
 	#endif
 
 	verbosity=102;
 
         while ((c=getopt(argc, argv, "o:rd:t:p:i:n:"))!=-1) {
                 switch (c) {
-			#ifndef HAVE_LIBPVM3
+            #ifndef USE_MPI
                         case 'o': prefix=strdup(optarg);
                                   break;
 			case 't': sscanf(optarg, "%d", &timeout);
 				  break;
                         case 'r': restore=1;
 				  break;
+/*
+			#elifndef HAVE_LIBPVM3
+                        case 'o': prefix=strdup(optarg);
+                                  break;
+			case 't': sscanf(optarg, "%d", &timeout);
+				  break;
+                        case 'r': restore=1;
+				  break;
+*/
 			#endif
 			case 'd': sscanf(optarg, "%d", &verbosity);
 				  verbosity+=100;
@@ -468,12 +595,15 @@ int main(int argc, char *argv[])
 	main_rand_init();
 
 	/* Get parent task id */
-
-        #ifdef HAVE_LIBPVM3
+        #ifdef USE_MPI
         parent=pvm_parent();
-	#endif 
+/*
+        #elifdef HAVE_LIBPVM3
+        parent=pvm_parent();
+*/
+	#endif
 
-	/* Receive parent's locale, so that we can print messages 
+	/* Receive parent's locale, so that we can print messages
 	 * in the same language */
 
 	#ifdef HAVE_LIBPVM3
@@ -501,15 +631,22 @@ int main(int argc, char *argv[])
 	free(locale);
 	#endif
 
-        /* Receive XML configuration file or get configuration filename 
+        /* Receive XML configuration file or get configuration filename
 	 * from the command line */
-
-	#ifdef HAVE_LIBPVM3
+	#ifdef USE_MPI
         xmlconfig=tmpnam(NULL);
 	if (file_recv(xmlconfig, parent, MSG_XMLDATA)) {
 		error(strerror(errno));
         	fatal(_("Can't open temporary file"));
 	}
+/*
+	#elifdef HAVE_LIBPVM3
+        xmlconfig=tmpnam(NULL);
+	if (file_recv(xmlconfig, parent, MSG_XMLDATA)) {
+		error(strerror(errno));
+        	fatal(_("Can't open temporary file"));
+	}
+	*/
         #else
         xmlconfig=argv[optind];
         #endif
@@ -525,13 +662,17 @@ int main(int argc, char *argv[])
 	/* If XML configuration was stored in a temporary file, delete
 	 * it, because we no longer need it */
 
-        #ifdef HAVE_LIBPVM3
+        #ifdef USE_MPI
         unlink(xmlconfig);
+/*
+        #elifdef HAVE_LIBPVM3
+        unlink(xmlconfig);
+*/
         #endif
 
         /* Open file for convergence info */
 
-        #ifndef HAVE_LIBPVM3
+ #ifndef USE_MPI
 	filename=addprefix(prefix, "conv.txt");
 	if(restore>0) {
 	        convfile=fopen(filename, "a");
@@ -539,15 +680,29 @@ int main(int argc, char *argv[])
 		convfile=fopen(filename, "w");
 	}
 	free(filename);
+/*
+        #elifndef HAVE_LIBPVM3
+	filename=addprefix(prefix, "conv.txt");
+	if(restore>0) {
+	        convfile=fopen(filename, "a");
+	} else {
+		convfile=fopen(filename, "w");
+	}
+	free(filename);
+*/
         #endif
 
 	/* Report how many fitness functions are defined
 	 * and what are their names */
 
+    #ifdef USE_MPI
+	send_fitness_info();
+/*
 	#ifdef HAVE_LIBPVM3
 	send_fitness_info();
+*/
 	#else
-	info(_("Loaded %d modules"), mod_fitnessnum);	
+	info(_("Loaded %d modules"), mod_fitnessnum);
 	#endif
 
 	/* Change the order of calling of updater functions */
@@ -568,21 +723,34 @@ int main(int argc, char *argv[])
 
 	/* Check if we need to restore the population */
 
-        #ifdef HAVE_LIBPVM3
+        #ifdef USE_MPI
         pvm_recv(parent, MSG_RESTOREPOP);
         pvm_upkint(&restore, 1, 1);
+/*
+        #elifdef HAVE_LIBPVM3
+        pvm_recv(parent, MSG_RESTOREPOP);
+        pvm_upkint(&restore, 1, 1);
+*/
         #endif
 
-	/* Restore population if necessary. Otherwise create 
+	/* Restore population if necessary. Otherwise create
 	 * a random population */
 
         if(restore) {
-		#ifdef HAVE_LIBPVM3
+        #ifdef USE_MPI
 		pop=population_recv(parent, MSG_RESTOREPOP);
 
 		if(pop==NULL) {
 			fatal(_("Error receiving population from master"));
 		}
+/*
+		#elifdef HAVE_LIBPVM3
+		pop=population_recv(parent, MSG_RESTOREPOP);
+
+		if(pop==NULL) {
+			fatal(_("Error receiving population from master"));
+		}
+*/
 		#else
 		filename=addprefix(prefix, "save.txt");
 		pop=population_load(filename);
@@ -600,13 +768,13 @@ int main(int argc, char *argv[])
 	if(pop==NULL) {
 		fatal(_("Error initializing population"));
 	}
-	
+
 	if(!restore) {
 		population_rand(pop);
 		population_hint(pop, par_pophint);
 	}
 
-	/* Report how many tuples were defined in the loaded 
+	/* Report how many tuples were defined in the loaded
 	 * XML configuration */
 	if(restore>0) {
         	info(_("I have restored %d tuples"), dat_tuplenum);
@@ -618,19 +786,28 @@ int main(int argc, char *argv[])
 
 	cache_init();
 
-        /* Get a task id of another node that will receive 
+        /* Get a task id of another node that will receive
 	 * migration from this node */
 
         #ifdef HAVE_LIBPVM3
         pvm_recv(parent, MSG_SIBLING);
         pvm_upkint(&sibling, 1, 1);
+/*
+        #elifdef HAVE_LIBPVM3
+        pvm_recv(parent, MSG_SIBLING);
+        pvm_upkint(&sibling, 1, 1);
+*/
         #endif
 
         /* Prepare signal handling routines that will stop
 	 * this node in case of timeout or user interrupt */
 
+        #ifdef USE_MPI
+        pvm_notify(PvmTaskExit, MSG_MASTERKILL, 1, &parent);
+        /*
         #ifdef HAVE_LIBPVM3
         pvm_notify(PvmTaskExit, MSG_MASTERKILL, 1, &parent);
+*/
 	#else
         ctrlc=0;
         signal(SIGINT, sighandler);
@@ -654,8 +831,12 @@ int main(int argc, char *argv[])
 
 		/* Get a filename to save the result to */
 
-                #ifdef HAVE_LIBPVM3
+                #ifdef USE_MPI
                 xmlconfig=strdup(tmpnam(NULL));
+                /*
+                #elifdef HAVE_LIBPVM3
+                xmlconfig=strdup(tmpnam(NULL));
+                */
                 #else
 		xmlconfig=addprefix(prefix, "result.xml");
                 #endif
@@ -668,19 +849,32 @@ int main(int argc, char *argv[])
 
 		/* Send the written file to the parent */
 
-                #ifdef HAVE_LIBPVM3
+        #ifdef HAVE_LIBPVM3
 		pvm_initsend(0);
 		pvm_send(parent, MSG_RESULTDATA);
 
 		if (file_send(xmlconfig, parent, MSG_RESULTDATA)) {
 	        	fatal(_("Can't send temporary file"));
 		}
+		/*
+        #elifdef HAVE_LIBPVM3
+		pvm_initsend(0);
+		pvm_send(parent, MSG_RESULTDATA);
+
+		if (file_send(xmlconfig, parent, MSG_RESULTDATA)) {
+	        	fatal(_("Can't send temporary file"));
+		}
+		*/
 		#endif
 
 		/* Delete the temporary file */
 
-		#ifdef HAVE_LIBPVM3
+        #ifdef USE_MPI
                 unlink(xmlconfig);
+/*
+		#elifdef HAVE_LIBPVM3
+                unlink(xmlconfig);
+*/
 		#endif
 
 		free(xmlconfig);
@@ -688,14 +882,22 @@ int main(int argc, char *argv[])
 
 	/* Stop the PVM3 task */
 
-	#ifdef HAVE_LIBPVM3
+    #ifdef USE_MPI
         pvm_exit();
+/*
+	#elifdef HAVE_LIBPVM3
+        pvm_exit();
+*/
 	#endif
 
         /* Close file for convergence info */
 
-        #ifndef HAVE_LIBPVM3
+        #ifndef USE_MPI
         fclose(convfile);
+/*
+        #elifndef HAVE_LIBPVM3
+        fclose(convfile);
+*/
         #endif
 
 	/* Free data structures */

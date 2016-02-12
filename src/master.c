@@ -33,10 +33,15 @@
 #include <locale.h>
 #endif
 
-#ifdef HAVE_LIBPVM3
-#include <pvm3.h>
-#include <signal.h>
+#ifdef USE_MPI
+    #include "mpi.h"
+/*
+#elifdef HAVE_LIBPVM3
+  #include <pvm3.h>
+  #include <signal.h>
+*/
 #endif
+
 
 #include "chromo.h"
 #include "main.h"
@@ -135,7 +140,7 @@ void print_syntax()
                         separated string of options.\n"));
 	printf(_("\
   -i PATH		set path to fitness modules\n\
-                        (Default %s)\n"), 
+                        (Default %s)\n"),
   			HAVE_MODULE_PATH);
 
         printf("\n");
@@ -276,16 +281,16 @@ int main(int argc, char *argv[])
                 fatal(_("all nodes failed."));
         }
 
-	snprintf(fn, 256, "%s %s", 
-		ngettext("PGA using %d node", "PGA using %d nodes", nodenum), 
+	snprintf(fn, 256, "%s %s",
+		ngettext("PGA using %d node", "PGA using %d nodes", nodenum),
 		ngettext("on %d host", "on %d hosts", hostnum));
 
         info(fn, nodenum, hostnum);
 
 	if (maxlocals>0) {
-		debug(ngettext("maximum %d node will do local search", 
-			       "maximum %d nodes will do local search", 
-			       maxlocals), 
+		debug(ngettext("maximum %d node will do local search",
+			       "maximum %d nodes will do local search",
+			       maxlocals),
 		      maxlocals);
 	} else if (maxlocals==0) {
 		debug(_("local search disabled"));
@@ -320,7 +325,7 @@ int main(int argc, char *argv[])
                 pvm_exit();
                 exit(1);
         }
-	
+
         /*** Restore populations from a file if requested ***/
         if (restore) {
                 debug(_("Restoring saved populations"));
@@ -333,7 +338,7 @@ int main(int argc, char *argv[])
 
 			if(pop==NULL) {
 				info(_("Failed to load %s"), fn);
-                        
+
 				pvm_initsend(0);
 				a=0;
 				pvm_pkint(&a, 1, 1);
@@ -346,14 +351,14 @@ int main(int argc, char *argv[])
 
 				population_send(pop, nodetid[n], MSG_RESTOREPOP);
 				population_free(pop);
-	
+
 	                        running++;
 			}
                 }
 
 		if (running<nodenum) {
                        	debug(_("%d nodes randomized"), nodenum-running);
-		} 
+		}
         } else {
                 pvm_initsend(0);
                 a=0;
@@ -378,7 +383,7 @@ int main(int argc, char *argv[])
         debug(_("parent ( %x ) listening\n"), pvm_mytid());
 
 	/*** Set up files for saving convergence info ***/
-	
+
         #ifdef HAVE_CONV
         convfiles=malloc(nodenum*sizeof(*convfiles));
         if (convfiles==NULL) {
@@ -464,7 +469,7 @@ int main(int argc, char *argv[])
 
                         #ifdef HAVE_CONV
 			if(!restore) {
-	                        fprintf(convfiles[sendernum], 
+	                        fprintf(convfiles[sendernum],
 							"# Gen.\tFitness\tOK");
 				for(c=0;c<gnum;c++) {
 					pvm_upkstr(fn);
@@ -473,7 +478,7 @@ int main(int argc, char *argv[])
 							fn, a?" (M)":"");
 				}
 				fprintf(convfiles[sendernum], "\n");
-	
+
 	                        fflush(convfiles[sendernum]);
 			}
                         #endif
@@ -556,7 +561,7 @@ int main(int argc, char *argv[])
 				node_restart(sendernum);
 			} else {
 				if(numlocals!=maxlocals) {
-					c=1; 
+					c=1;
 					numlocals++;
 					node_stop(sendernum);
 				} else {
@@ -585,8 +590,8 @@ int main(int argc, char *argv[])
 		} else {
 			error(_("Received interrupt"));
 		}
-	} 
-	
+	}
+
 	if(cnt_recv<1) {
 		info(_("No results were received"));
 	} else if(cnt_recv<cnt_stopped) {
@@ -619,7 +624,7 @@ int main(int argc, char *argv[])
 
         pvm_exit();
         if (ctrlc) {
-		exit(1); 
+		exit(1);
 	} else if(cnt_recv==0) {
 		exit(2);
 	} else {

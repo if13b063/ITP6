@@ -17,7 +17,13 @@
 
 /* $Id: error-pvm.c,v 1.3 2006-02-04 14:16:12 avian Exp $ */
 
-#include <pvm3.h>
+#ifdef USE_MPI
+    #include "mpi.h"
+/*
+#elifdef HAVE_LIBPVM3
+  #include <pvm3.h>
+*/
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
