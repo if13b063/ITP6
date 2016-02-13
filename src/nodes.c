@@ -30,7 +30,7 @@
 
 #ifdef USE_MPI
 
-#include <pvm3.h>
+#include "mpi.h"
 
 #include "main.h"
 #include "nodes.h"
@@ -47,11 +47,11 @@ void node_update(int node)
 {
 	int sibling;
 
-	sibling=nodeinfo[node].send;
+		int sibling, mpisend;
 
-        pvm_initsend(0);
-        pvm_pkint(&nodetid[sibling], 1, 1);
-        pvm_send(nodetid[node], MSG_SIBLING);
+    sibling=nodeinfo[node].send;
+
+		mpisend= MPI_Send(&nodetid[sibling], 1, MPI_INT, node, node, MPI_COMM_WORLD);
 }
 
 /* Returns node number (for use with nodetid and nodeinfo arrays */
@@ -116,6 +116,7 @@ void node_restart(int num)
 /* Helper function for node_start. Returns an array of integers, telling how
  * many nodes to start on each host in the cluster according to sp= option
  * in hostfile. num is number of nodes to start, hosts is number of hosts. */
+#ifdef HAVE_LIBPVM3
 static int *choose(int num, struct pvmhostinfo *info, int hosts)
 {
 	int n,m,mmax;
@@ -157,65 +158,61 @@ static int *choose(int num, struct pvmhostinfo *info, int hosts)
 
 	return run;
 }
+#endif // HAVE_LIBPVM3
 
 /* Start nodereq nodes. Initialize nodetid and nodeinfo structures
  * Returns number of nodes that succesfully started. argv is an array
  * of arguments to the nodes (see pvm_spawn(3)). */
 int node_startall(int nodereq, char **argv)
 {
-	int running;
-	int n,c,m;
+int n, c, p, id;
 
-	struct pvmhostinfo *info;
 	int *run;
 
 	/* malloc arrays */
-        nodetid=malloc(sizeof(*nodetid)*nodereq);
-        nodeinfo=malloc(sizeof(*nodeinfo)*nodereq);
-        if(nodetid==NULL||nodeinfo==NULL) fatal(strerror(errno));
+	nodetid = malloc(sizeof(*nodetid)*nodereq);
+	nodeinfo = malloc(sizeof(*nodeinfo)*nodereq);
+	if (nodetid == NULL || nodeinfo == NULL) fatal(strerror(errno));
 
-        pvm_config(&hostnum, NULL, &info);
 
 	/* run chooser */
-	run=choose(nodereq, info, hostnum);
+	//run = choose(nodereq, info, hostnum);
 
 	/* start nodes */
-	running=0;
-	for(n=0;n<hostnum;n++) {
-		if(run[n]<1) {
+	running = 0;
+	for (n = 0; n<hostnum; n++) {
+		if (nodereq<1) {
 			error(_("Host '%s' is too slow and will be ignored."),
-							info[n].hi_name);
-		} else {
-	                c=pvm_spawn("tablix2_kernel",
-					argv,
-					PvmTaskHost,
-					info[n].hi_name,
-					run[n],
-					&nodetid[running]);
-
-	                if (c<run[n]) {
-	                        error(_("Some nodes on host '%s' failed to "
-						"start."), info[n].hi_name);
-	                }
-
-	                if (c<=0) {
-				pvm_perror("tablix");
+				info[n].hi_name);
+		}
+		else {
+			mpimaker = MPI_Init(&nodereq, &argv);
+			mpimaker = MPI_Comm_rank(PMI_COMM_WORLD, &id);
+			mpimaker = MPI_Comm_size(MPI_COMM_WORLD, &p);
+			if (p < nodereq)
+			{
+				printf("\n");
+				printf("MPI_MULTITASK - Fatal error!\n");
+				mpimaker = MPI_Finalize();
+				exit(1);
 			}
 
-			m=pvm_notify(PvmTaskExit, MSG_NODEKILL, c,
-							&nodetid[running]);
-
-			if(m<0) {
-				pvm_perror("tablix");
+			if (p<nodereq) {
+				error(_("Some nodes on host '%s' failed to "
+					"start."), info[n].hi_name);
 			}
 
-			if(c>0) {
-				running+=c;
+			if (mpimaker != MPI_SUCCESS) {
+				error("tablix");
+			}
+
+			if (p>0) {
+				running += p;
 			}
 		}
 	}
 
-	free(run);
+	//free(run);
 
 	nodenum=running;
 

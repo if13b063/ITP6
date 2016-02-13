@@ -26,7 +26,7 @@
 #endif
 
 #ifdef USE_MPI
-#include <pvm3.h>
+#include "mpi.h"
 
 #include "main.h"
 #include "error.h"
@@ -220,14 +220,10 @@ int table_send(population *pop, int num, int recipient, int msgtag)
 		tab=pop->tables[n];
 		for(m=0;m<tab->typenum;m++) {
 			size=tab->chr[m].gennum;
-			result=pvm_pkint(tab->chr[m].gen, size, 1);
-
-			if(result<0) return(-1);
+      result = MPI_Send(tab->chr[m].gen, o, MPI_PACKED, recipient, msgtag, MPI_COMM_WORLD);
+			if(result!=MPI_SUCCESS) return(-1);
 		}
 	}
-
-	result=pvm_send(recipient, msgtag);
-	if(result<0) return(-1);
 
 	return(0);
 }

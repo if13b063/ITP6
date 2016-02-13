@@ -36,6 +36,7 @@
 #include "gettext.h"
 #include "error.h"
 
+#ifndef USE_MPI
 int verbosity;
 char *curmodule;
 
@@ -69,3 +70,4 @@ void msg_send(char *module, int msgtag, const char *fmt, ...)
 
 	va_end(ap);
 }
+#endif

@@ -68,6 +68,7 @@ int timeout_reached;
 int numlocals;
 int maxlocals;
 struct timeval t;
+int mpimaker;
 
 //#elifdef HAVE_LIBPVM3
 //  int ctrlc;
@@ -177,6 +178,7 @@ void print_syntax()
 #ifdef USE_MPI
 void sighandler(int num)
 {
+       mpimaker = MPI_Init(&argc, &argv);
         int c;
 
 	if(num==SIGALRM) {
@@ -239,6 +241,8 @@ int main(int argc, char *argv[])
 	int timeout;
 
 	population *pop=NULL;
+
+	mpimaker = MPI_Init(&argc, &argv);
 
         #ifdef HAVE_CONV
         FILE **convfiles;
@@ -371,6 +375,8 @@ int main(int argc, char *argv[])
         /*** Start nodes ***/
 
 	assert(argv[argc]==NULL);
+
+
 	node_startall(nodereq, &argv[1]);
 
         if(nodenum==0) {
