@@ -46,12 +46,13 @@ struct nodeinfos *nodeinfo;
 void node_update(int node)
 {
 	int sibling;
+	MPI_Comm comm;
 
 		int sibling, mpisend;
 
     sibling=nodeinfo[node].send;
 
-		mpisend= MPI_Send(&nodetid[sibling], 1, MPI_INT, node, node, MPI_COMM_WORLD);
+		mpisend= MPI_Send(&nodetid[sibling], 1, MPI_INT, node, node, comm);
 }
 
 /* Returns node number (for use with nodetid and nodeinfo arrays */
@@ -168,6 +169,7 @@ int node_startall(int nodereq, char **argv)
 int n, c, p, id;
 
 	int *run;
+	MPI_Comm comm;
 
 	/* malloc arrays */
 	nodetid = malloc(sizeof(*nodetid)*nodereq);
@@ -187,8 +189,8 @@ int n, c, p, id;
 		}
 		else {
 			mpimaker = MPI_Init(&nodereq, &argv);
-			mpimaker = MPI_Comm_rank(PMI_COMM_WORLD, &id);
-			mpimaker = MPI_Comm_size(MPI_COMM_WORLD, &p);
+			mpimaker = MPI_Comm_rank(comm, &id);
+			mpimaker = MPI_Comm_size(comm, &p);
 			if (p < nodereq)
 			{
 				printf("\n");
