@@ -914,8 +914,9 @@ int main(int argc, char *argv[])
 //		pvm_initsend(0);
 //		pvm_send(parent, MSG_RESULTDATA);
 		int mpixmlnamesend;
+		int none=0;
 
-		mpixmlsend=MPI_Send(0, 1, MPI_INT, parent, MSG_RESULTDATA, MPI_COMM_WORLD);
+		mpixmlsend=MPI_Send(&none, 1, MPI_INT, parent, MSG_RESULTDATA, MPI_COMM_WORLD);
 
 		if (file_send(xmlconfig, parent, MSG_RESULTDATA)) {
 	        	fatal(_("Can't send temporary file"));
