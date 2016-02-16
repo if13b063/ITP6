@@ -909,9 +909,13 @@ int main(int argc, char *argv[])
 
 		/* Send the written file to the parent */
 
-        #ifdef HAVE_LIBPVM3
-		pvm_initsend(0);
-		pvm_send(parent, MSG_RESULTDATA);
+
+    #ifdef USE_MPI
+//		pvm_initsend(0);
+//		pvm_send(parent, MSG_RESULTDATA);
+		int mpixmlnamesend;
+
+		mpixmlsend=MPI_Send(0, 1, MPI_INT, parent, MSG_RESULTDATA, MPI_COMM_WORLD);
 
 		if (file_send(xmlconfig, parent, MSG_RESULTDATA)) {
 	        	fatal(_("Can't send temporary file"));
@@ -940,10 +944,10 @@ int main(int argc, char *argv[])
 		free(xmlconfig);
 	}
 
-	/* Stop the PVM3 task */
+	/* Stop the MPI or PVM3 task */
 
     #ifdef USE_MPI
-        pvm_exit();
+        MPI_Finalize();
 /*
 	#elifdef HAVE_LIBPVM3
         pvm_exit();
