@@ -62,7 +62,13 @@
 
 static population *pop=NULL;
 
-int parent;
+//#ifdef HAVE_LIBPVM3
+//    int parent;
+//#endif
+#ifdef USE_MPI
+    //MPI_Comm parent;
+    int parent=0;
+#endif
 
 //#ifndef HAVE_LIBPVM3
 //static int ctrlc;
@@ -473,27 +479,28 @@ int main_loop()
 #ifdef USE_MPI
 static void send_fitness_info()
 {
-	int n;
+	int n, counter=0, strsize;
 	fitnessfunc *cur;
-    int mpisend4;
-    MPI_Comm comm8;
-    int intsend[n];
-    char (*stringsend[n])[100];
+    int mpisend4, mpipack;
+    MPI_Comm comm8, comm9;
+    char fitbuff[1000];
 
+    mpipack=MPI_Pack(&mod_fitnessnum, 1, MPI_INT, *fitbuff, 1000, &counter, comm9);
 
-        pvm_initsend(0);
-        pvm_pkint(&mod_fitnessnum, 1, 1);
 
 	n=0;
 	for(cur=mod_fitnessfunc;cur!=NULL;cur=cur->next) {
-		pvm_pkstr(cur->name);
-		pvm_pkint(&cur->man, 1, 1);
+        counter++;
+        strsize=strlen(cur->name);
+		mpipack=MPI_Pack(cur->name, strsize, MPI_CHAR, *fitbuff, 1000, &counter, comm9);
+		counter++;
+		mpipack=MPI_Pack(&cur->man, 1, MPI_INT, *fitbuff, 1000, &counter, comm9);
 		n++;
 	}
 
 	assert(n==mod_fitnessnum);
 
-        mpisend4=MPI_Send(&mod_fitnessnum, 1, MPI_INT, parent, MSG_MODINFO, comm8);
+        mpisend4=MPI_Send(fitbuff, counter, MPI_PACKED, parent, MSG_MODINFO, comm8);
 }
 /*
 #elifdef HAVE_LIBPVM3
@@ -615,7 +622,8 @@ int main(int argc, char *argv[])
 
 	/* Get parent task id */
         #ifdef USE_MPI
-        parent=pvm_parent();
+        //MPI_Comm_get_parent(&parent);
+        parent=0;
 /*
         #elifdef HAVE_LIBPVM3
         parent=pvm_parent();
@@ -625,11 +633,39 @@ int main(int argc, char *argv[])
 	/* Receive parent's locale, so that we can print messages
 	 * in the same language */
 
-	#ifdef HAVE_LIBPVM3
-        pvm_recv(parent, MSG_PARAMS);
+//	#ifdef HAVE_LIBPVM3
+//        pvm_recv(parent, MSG_PARAMS);
+//
+//	locale=malloc(LINEBUFFSIZE);
+//        pvm_upkstr(locale);
+//
+//	#ifdef HAVE_SETLOCALE
+//	debug("Setting locale to '%s'", locale);
+//	if(!setlocale(LC_ALL, locale)) {
+//		info(_("Locale not supported by C library. "
+//					"Using the fallback 'C' locale."));
+//	}
+//	setenv("LC_ALL", locale, 1);
+//	{
+//		extern int _nl_msg_cat_cntr;
+//		_nl_msg_cat_cntr++;
+//	}
+//	#else
+//	debug("Not setting locale to '%s' because setlocale() not "
+//					"available on this host", locale);
+//	#endif
+//
+//	free(locale);
+//	#endif
 
-	locale=malloc(LINEBUFFSIZE);
-        pvm_upkstr(locale);
+#ifdef USE_MPI
+    int mpi_receve;
+    MPI_Comm com;
+    MPI_Status *stat;
+    locale=malloc(LINEBUFFSIZE);
+    //not finished function
+    mpi_receve=MPI_Recv(&locale, 1, MPI_CHAR, parent, MSG_PARAMS, com, *stat);
+
 
 	#ifdef HAVE_SETLOCALE
 	debug("Setting locale to '%s'", locale);
@@ -743,8 +779,11 @@ int main(int argc, char *argv[])
 	/* Check if we need to restore the population */
 
         #ifdef USE_MPI
-        pvm_recv(parent, MSG_RESTOREPOP);
-        pvm_upkint(&restore, 1, 1);
+        int mpir;
+        MPI_Comm com2;
+        MPI_Status *stat2;
+        mpir=MPI_Recv(&restore, 1, MPI_INT, parent, MSG_RESTOREPOP, com2, *stat2);
+
 /*
         #elifdef HAVE_LIBPVM3
         pvm_recv(parent, MSG_RESTOREPOP);
@@ -809,8 +848,10 @@ int main(int argc, char *argv[])
 	 * migration from this node */
 
         #ifdef HAVE_LIBPVM3
-        pvm_recv(parent, MSG_SIBLING);
-        pvm_upkint(&sibling, 1, 1);
+        int mpir2;
+        MPI_Comm com3;
+        MPI_Status *stat3;
+        mpir2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, com3, *stat3);
 /*
         #elifdef HAVE_LIBPVM3
         pvm_recv(parent, MSG_SIBLING);
@@ -822,7 +863,7 @@ int main(int argc, char *argv[])
 	 * this node in case of timeout or user interrupt */
 
         #ifdef USE_MPI
-        pvm_notify(PvmTaskExit, MSG_MASTERKILL, 1, &parent);
+        //pvm_notify(PvmTaskExit, MSG_MASTERKILL, 1, &parent);
         /*
         #ifdef HAVE_LIBPVM3
         pvm_notify(PvmTaskExit, MSG_MASTERKILL, 1, &parent);
