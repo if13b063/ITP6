@@ -178,6 +178,8 @@ void print_syntax()
 #ifdef USE_MPI
 void sighandler(int num)
 {
+    int mpisend;
+    MPI_Comm comm;
        mpimaker = MPI_Init(&argc, &argv);
         int c;
 
@@ -185,10 +187,11 @@ void sighandler(int num)
 		timeout_reached=1;
 	}
         if (ctrlc<1) {
-                pvm_initsend(0);
                 c=0;
-                pvm_pkint(&c, 1, 1);
-                pvm_mcast(nodetid, nodenum, MSG_SENDPOP);
+                for(int count=0, count<nodenum, count++)
+                {
+                    mpisend=MPI_Send(&c, 1, MPI_INT, count, MSG_SENDPOP, MPI_COMM_WORLD);
+                }
                 ctrlc++;
         } else {
                 exit(1);
@@ -380,7 +383,8 @@ int main(int argc, char *argv[])
 	node_startall(nodereq, &argv[1]);
 
         if(nodenum==0) {
-                pvm_exit();
+                //pvm_exit();
+                MPI_Finalize();
                 fatal(_("all nodes failed."));
         }
 
@@ -409,14 +413,19 @@ int main(int argc, char *argv[])
         if (buff==NULL||module==NULL) {
                 perror(cmd);
                 for(c=0;c<nodenum;c++) pvm_kill(nodetid[c]);
-                pvm_exit();
+                //pvm_exit();
+                MPI_Finalize();
                 exit(1);
         }
 
-        pvm_initsend(0);
-        pvm_pkstr(loc);
+        int strsize, mpibcast;
+        strsize=strlen(loc);
+        MPI_Comm comm2;
 
-        pvm_mcast(nodetid, nodenum, MSG_PARAMS);
+        for(int count=0, count<nodenum, count++)
+                {
+                    mpibcast=MPI_Send(&loc, strsize, MPI_CHAR, count, MSG_PARAMS, MPI_COMM_WORLD);
+                }
 
 	if (file_mcast(argv[optind], nodetid, nodenum, MSG_XMLDATA)) {
                 perror(cmd);
