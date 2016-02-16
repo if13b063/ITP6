@@ -423,9 +423,9 @@ int main(int argc, char *argv[])
         MPI_Comm comm2;
 
         for(int count=0, count<nodenum, count++)
-                {
-                    mpibcast=MPI_Send(&loc, strsize, MPI_CHAR, count, MSG_PARAMS, MPI_COMM_WORLD);
-                }
+        {
+            mpibcast=MPI_Send(&loc, strsize, MPI_CHAR, count, MSG_PARAMS, MPI_COMM_WORLD);
+        }
 
 	if (file_mcast(argv[optind], nodetid, nodenum, MSG_XMLDATA)) {
                 perror(cmd);
