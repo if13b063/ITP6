@@ -64,12 +64,12 @@ static population *pop=NULL;
 
 int parent;
 
-#ifndef HAVE_LIBPVM3
-static int ctrlc;
-
-char *prefix;
-FILE *convfile;
-#endif
+//#ifndef HAVE_LIBPVM3
+//static int ctrlc;
+//
+//char *prefix;
+//FILE *convfile;
+//#endif
 
 #ifndef USE_MPI
 static void sighandler(int num)
@@ -314,6 +314,7 @@ int main_loop()
 
 			return(1);
 		}
+*/
 	        #else
        		if(ctrlc==1) {
 			filename=addprefix(prefix, "save.txt");
@@ -322,18 +323,21 @@ int main_loop()
 
 			return(1);
 	        }
-*/
+
        		#endif
 
 		/* Report the current state of the population */
 
-            #ifdef USE_MPI
-        	pvm_initsend(0);
-        	pvm_pkint(&tables[0]->fitness, 1, 1);
-        	pvm_pkint(&pop->gencnt, 1, 1);
-        	pvm_pkint(&tables[0]->possible, 1, 1);
-        	pvm_pkint(tables[0]->subtotals, mod_fitnessnum, 1);
-        	pvm_send(parent, MSG_REPORT);
+#ifdef USE_MPI
+            int send[3];
+            int mpisend;
+            MPI_Comm comm;
+
+            send[0]=&tables[0]->fitness;
+            send[1]=&pop->gencnt;
+            send[2]=&tables[0]->possible;
+            send[3]=tables[0]->subtotals;
+            mpisend=MPI_Send(&send, 4, MPI_INT, parent, MSG_REPORT, comm);
 
 /*
         	#elifdef HAVE_LIBPVM3
@@ -342,7 +346,7 @@ int main_loop()
         	pvm_pkint(&pop->gencnt, 1, 1);
         	pvm_pkint(&tables[0]->possible, 1, 1);
         	pvm_pkint(tables[0]->subtotals, mod_fitnessnum, 1);
-        	pvm_send(parent, MSG_REPORT);
+        	pvm_send(parent, MSG_REPORT);*/
         	#else
         	printf("-------%d\n", pop->gencnt);
         	for(c=0;c<5;c++) {
@@ -359,7 +363,6 @@ int main_loop()
 		}
 		fprintf(convfile, "\n");
         	fflush(convfile);
-*/
         	#endif
 
 		/* Update the counter of the number of consequential
@@ -373,7 +376,13 @@ int main_loop()
 		/* Stop the main loop if the parent process was killed */
 
             #ifdef USE_MPI
-        	if (pvm_nrecv(-1, MSG_MASTERKILL)>0) {
+            int mpiiprobe;
+            MPI_Comm comm2;
+            MPI_Status *status2;
+            int *flag;
+            mpiiprobe=MPI_Iprobe(0, MSG_MASTERKILL, comm2, *flag, *status2);
+)
+        	if (*flag==false) {
 			return(2);
         	}
 /*
@@ -390,12 +399,12 @@ int main_loop()
 		if (g2==par_localtresh) {
 			c=1;
 			#ifdef USE_MPI
-			pvm_initsend(0);
-			pvm_pkint(&c, 1, 1);
-			pvm_send(parent, MSG_LOCALSYN);
+			int mpisend2, mpirecv;
+			MPI_Comm comm3, comm4;
+			MPI_Status *status3;
+			mpisend2=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, comm3);
+			mpirecv=MPI_Recv(&c, 1, MPI_INT, parent, MSG_LOCALACK, comm4, *status3);
 
-			pvm_recv(parent, MSG_LOCALACK);
-			pvm_upkint(&c, 1, 1);
 /*
 			#elifdef HAVE_LIBPVM3
 			pvm_initsend(0);
@@ -411,9 +420,9 @@ int main_loop()
 				lsearch_table(tables[0]);
 				#ifdef USE_MPI
 				c=0;
-				pvm_initsend(0);
-				pvm_pkint(&c, 1, 1);
-				pvm_send(parent, MSG_LOCALSYN);
+				int mpisend3;
+				MPI_Comm comm5;
+				mpisend3=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, comm5);
 /*
 				#elifdef HAVE_LIBPVM3
 				c=0;
@@ -441,8 +450,13 @@ int main_loop()
 	        /* Get a task id of another node that will receive
 		 * migration from this node */
 		 #ifdef USE_MPI
-        	if (pvm_nrecv(parent, MSG_SIBLING)>0) {
-                	pvm_upkint(&sibling, 1, 1);
+		 int mpiiprobe2, mpirecv2;
+            MPI_Comm comm6, comm7;
+            MPI_Status *status4, *status5;
+            int *flag2;
+            mpiiprobe2=MPI_Iprobe(parent, MSG_SIBLING, comm6, *flag, *status4);
+        	if (*flag2==false) {
+        	mpirecv2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, comm7, *status5);
 			debug(_("New sibling %x"), sibling);
 	        }
 /*
@@ -461,6 +475,11 @@ static void send_fitness_info()
 {
 	int n;
 	fitnessfunc *cur;
+    int mpisend4;
+    MPI_Comm comm8;
+    int intsend[n];
+    char (*stringsend[n])[100];
+
 
         pvm_initsend(0);
         pvm_pkint(&mod_fitnessnum, 1, 1);
@@ -474,7 +493,7 @@ static void send_fitness_info()
 
 	assert(n==mod_fitnessnum);
 
-        pvm_send(parent, MSG_MODINFO);
+        mpisend4=MPI_Send(&mod_fitnessnum, 1, MPI_INT, parent, MSG_MODINFO, comm8);
 }
 /*
 #elifdef HAVE_LIBPVM3
