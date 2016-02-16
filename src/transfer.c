@@ -100,9 +100,7 @@ int file_mcast(char *filename, int *recipients, int num, int msgtag)
 {
 	FILE *handle;
 	char *buff;
-	int notend;
-	int len;
-	int result;
+	int notend, len, result, count=0;
 	MPI_Comm comm, comm2, comm3, comm4, comm5, comm6;
 
         buff=malloc(LINEBUFFSIZE);
@@ -116,20 +114,29 @@ int file_mcast(char *filename, int *recipients, int num, int msgtag)
 
         notend=1;
         while (fgets(buff, LINEBUFFSIZE, handle)!=NULL) {
-                result=MPI_Bcast(&notend, 1, MPI_INT, 0, msgtag, comm);
+            for(count=0, count<num, count++)
+            {
+                result=MPI_Send(&notend, 1, MPI_INT, 0, msgtag, MPI_COMM_WORLD);
+            }
                 if(result!=MPI_SUCCESS){
                   fclose(handle);
                   free(buff);
                   return(-1);
                 }
                 len=strlen(buff);
-                result=MPI_Bcast(&len, 1, MPI_INT, 0, msgtag, comm2);
+                for(count=0, count<num, count++)
+                {
+                    result=MPI_Send(&len, 1, MPI_INT, 0, msgtag, MPI_COMM_WORLD);
+                }
                 if(result!=MPI_SUCCESS){
                   fclose(handle);
                   free(buff);
                   return(-1);
                 }
-                result=MPI_Bcast(buff, len, MPI_CHAR, 0, msgtag, comm3);
+                for(count=0, count<num, count++)
+                {
+                    result=MPI_Send(buff, len, MPI_CHAR, 0, msgtag, MPI_COMM_WORLD);
+                }
                 if(result!=MPI_SUCCESS){
                   fclose(handle);
                   free(buff);
@@ -139,20 +146,29 @@ int file_mcast(char *filename, int *recipients, int num, int msgtag)
 
         notend=0;
         strcpy(buff, "<!-- End of file -->\n");
-        result=MPI_Bcast(&notend, 1, MPI_INT, 0, msgtag, comm4);
+        for(count=0, count<num, count++)
+        {
+            result=MPI_Send(&notend, 1, MPI_INT, 0, msgtag, MPI_COMM_WORLD);
+        }
         if(result!=MPI_SUCCESS){
           fclose(handle);
           free(buff);
           return(-1);
         }
         len=strlen(buff);
-        result=MPI_Bcast(&len, 1, MPI_INT, 0, msgtag, comm5);
+        for(count=0, count<num, count++)
+        {
+            result=MPI_Send(&len, 1, MPI_INT, 0, msgtag, MPI_COMM_WORLD);
+        }
         if(result!=MPI_SUCCESS){
           fclose(handle);
           free(buff);
           return(-1);
         }
-        result=MPI_Bcast(buff, len, MPI_CHAR, 0, msgtag, comm6);
+        for(count=0, count<num, count++)
+        {
+            result=MPI_Send(buff, len, MPI_CHAR, 0, msgtag, MPI_COMM_WORLD);
+        }
         if(result!=MPI_SUCCESS){
           fclose(handle);
           free(buff);
