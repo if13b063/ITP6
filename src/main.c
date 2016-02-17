@@ -302,7 +302,8 @@ int main_loop()
         	/* Save population if interrupt was received */
 
 #ifdef USE_MPI
-	        if(pvm_nrecv(parent, MSG_SENDPOP)>0) {
+/////////////////////?
+        if(pvm_nrecv(parent, MSG_SENDPOP)>0) {
 	                pvm_initsend(0);
                 	pvm_send(parent, MSG_POPDATA);
 
@@ -335,14 +336,17 @@ int main_loop()
 		/* Report the current state of the population */
 
 #ifdef USE_MPI
-            int send[3];
-            int mpisend;
+            int mpipack1, mpisend;
+            int position = 0;
+            char buff[LINEBUFFSIZE];
 
-            send[0]=&tables[0]->fitness;
-            send[1]=&pop->gencnt;
-            send[2]=&tables[0]->possible;
-            send[3]=tables[0]->subtotals;
-            mpisend=MPI_Send(&send, 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
+            mpipack1=MPI_Pack(tables[0]->fitness, 1, MPI_INT, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+            mpipack1=MPI_Pack(pop->gencnt, 1, MPI_INT, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+            mpipack1=MPI_Pack(tables[0]->possible, 1, MPI_INT, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+            mpipack1=MPI_Pack(mod_fitnessnum, 1, MPI_INT, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+            mpipack1=MPI_Pack(tables[0]->subtotals, mod_fitnessnum, MPI_INT, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+
+            mpisend=MPI_Send(buff, position, MPI_PACKED, parent, MSG_REPORT, MPI_COMM_WORLD);
 
 /*
         	#elifdef HAVE_LIBPVM3

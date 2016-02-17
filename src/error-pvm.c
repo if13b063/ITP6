@@ -36,9 +36,38 @@
 #include "gettext.h"
 #include "error.h"
 
-#ifndef USE_MPI
 int verbosity;
 char *curmodule;
+
+#ifdef USE_MPI
+void msg_vsend(char *module, int msgtag, const char *fmt, va_list ap)
+{
+	int strsize, mpipack, mpisend;
+	int position = 0;
+	char msg[LINEBUFFSIZE];
+  char buff[LINEBUFFSIZE];
+
+	if(msgtag>verbosity&&msgtag!=MSG_FATAL) return;
+
+	vsnprintf(msg, LINEBUFFSIZE, fmt, ap);
+	msg[LINEBUFFSIZE-1]=0;
+
+	strsize=strlen(module);
+	mpipack=MPI_Pack(strsize, 1, MPI_INT, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+  mpipack=MPI_Pack(module, strsize, MPI_CHAR, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+	strsize=strlen(msg);
+	mpipack=MPI_Pack(strsize, 1, MPI_INT, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+  mpipack=MPI_Pack(msg, strsize, MPI_CHAR, *buff, LINEBUFFSIZE, &position, MPI_COMM_WORLD);
+
+	mpisend=MPI_Send(buff, position, MPI_PACKED, parent, msgtag, MPI_COMM_WORLD);
+
+	if(msgtag==MSG_FATAL) {
+		MPI_Finalize();
+		exit(1);
+	}
+}
+
+#elifdef HAVE_LIBPVM3
 
 void msg_vsend(char *module, int msgtag, const char *fmt, va_list ap)
 {
@@ -59,6 +88,7 @@ void msg_vsend(char *module, int msgtag, const char *fmt, va_list ap)
 		exit(1);
 	}
 }
+#endif
 
 void msg_send(char *module, int msgtag, const char *fmt, ...)
 {
@@ -70,4 +100,3 @@ void msg_send(char *module, int msgtag, const char *fmt, ...)
 
 	va_end(ap);
 }
-#endif
