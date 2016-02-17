@@ -489,6 +489,7 @@ static void send_fitness_info()
 	for(cur=mod_fitnessfunc;cur!=NULL;cur=cur->next) {
         counter++;
         strsize=strlen(cur->name);
+		mpipack=MPI_Pack(strsize, 1, MPI_INT, *fitbuff, 256, &counter, MPI_COMM_WORLD);
 		mpipack=MPI_Pack(cur->name, strsize, MPI_CHAR, *fitbuff, 256, &counter, MPI_COMM_WORLD);
 		counter++;
 		mpipack=MPI_Pack(&cur->man, 1, MPI_INT, *fitbuff, 256, &counter, MPI_COMM_WORLD);
