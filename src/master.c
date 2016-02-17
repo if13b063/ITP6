@@ -431,15 +431,16 @@ int main(int argc, char *argv[])
                 perror(cmd);
 		error(_("Failed to send problem description '%s' "
 					"to computing nodes"), argv[optind]);
-                for(c=0;c<nodenum;c++) pvm_kill(nodetid[c]);
 		free(buff);
 		free(module);
-                pvm_exit();
+                MPI_Finalize();
+                //pvm_exit();
                 exit(1);
         }
 
         /*** Restore populations from a file if requested ***/
         if (restore) {
+        int msend, msend2;;
                 debug(_("Restoring saved populations"));
 
                 running=0;
@@ -449,17 +450,14 @@ int main(int argc, char *argv[])
 			pop=population_load(fn);
 
 			if(pop==NULL) {
-				info(_("Failed to load %s"), fn);
 
-				pvm_initsend(0);
-				a=0;
-				pvm_pkint(&a, 1, 1);
-        	                pvm_send(nodetid[n], MSG_RESTOREPOP);
+				info(_("Failed to load %s"), fn);
+                a=0;
+
+                msend=MPI_Send(&a, 1, MPI_INT, nodetid[n], MSG_RESTOREPOP, MPI_COMM_WORLD);
 			} else {
-				pvm_initsend(0);
-				a=1;
-				pvm_pkint(&a, 1, 1);
-        	                pvm_send(nodetid[n], MSG_RESTOREPOP);
+			a=1;
+			msend=MPI_Send(&a, 1, MPI_INT, nodetid[n], MSG_RESTOREPOP, MPI_COMM_WORLD);
 
 				population_send(pop, nodetid[n], MSG_RESTOREPOP);
 				population_free(pop);
@@ -472,10 +470,12 @@ int main(int argc, char *argv[])
                        	debug(_("%d nodes randomized"), nodenum-running);
 		}
         } else {
-                pvm_initsend(0);
-                a=0;
-                pvm_pkint(&a, 1, 1);
-                pvm_mcast(nodetid, nodenum, MSG_RESTOREPOP);
+        a=0;
+        int count;
+                for(count=0, count<nodenum, count++)
+                {
+                    msend2=MPI_Send(&a, 1, MPI_INT, count, MSG_RESTOREPOP, MPI_COMM_WORLD);
+                }
         }
 
         debug(_("Initializing nodes"));
@@ -504,7 +504,8 @@ int main(int argc, char *argv[])
                 free(buff);
                 /* We don't need to kill the nodes here. */
                 /* They should detect this. */
-                pvm_exit();
+                //pvm_exit();
+                MPI_Finalize();
                 exit(1);
         }
 
@@ -518,7 +519,8 @@ int main(int argc, char *argv[])
                         free(buff);
                         for(a=0;a<c;a++) fclose(convfiles[a]);
                         free(convfiles);
-                        pvm_exit();
+                        MPI_Finalize();
+                        //pvm_exit();
                         exit(1);
                 }
         }
@@ -554,9 +556,15 @@ int main(int argc, char *argv[])
 	/*** MAIN LOOP STARTS HERE ***/
 
 	numlocals=0;
+	int recvi, info, unpack1, unpack2, unpack3, unpack4, *position, strsize;
+	MPI_Status *st1;
+	MPI_Info *inf;
+
         while (cnt_stopped<nodenum) {
-                c=pvm_recv(-1, -1);
-                pvm_bufinfo(c, NULL, &msgtag, &sender);
+                recvi=MPI_Recv(&c, 1, MPI_PACKED, -1, -1, MPI_COMM_WORLD, *st1);
+                //c=pvm_recv(-1, -1);
+                info=MPI_Info_create(*inf);
+                //pvm_bufinfo(c, NULL, &msgtag, &sender);
 
 		if(msgtag!=MSG_REPORT&&msgtag!=MSG_LOCALSYN) {
 			counter_clear();
@@ -569,7 +577,10 @@ int main(int argc, char *argv[])
                 }
 
                 if (msgtag==MSG_MODINFO) {
-			pvm_upkint(&a, 1, 1);
+                unpack1=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT,
+               MPI_COMM_WORLD);
+			//pvm_upkint(&a, 1, 1);
+
 			debug(_("%x has %d fitness functions"), sender, a);
 
 			if(gnum<0) {
@@ -584,8 +595,11 @@ int main(int argc, char *argv[])
 	                        fprintf(convfiles[sendernum],
 							"# Gen.\tFitness\tOK");
 				for(c=0;c<gnum;c++) {
-					pvm_upkstr(fn);
-					pvm_upkint(&a, 1, 1);
+				unpack2=MPI_Unpack(*fitbuff, 256, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+				unpack3=MPI_Unpack(*fitbuff, 256, *position, &fn, strsize, MPI_CHAR, MPI_COMM_WORLD);
+                unpack4=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
+					//pvm_upkstr(fn);
+					//pvm_upkint(&a, 1, 1);
 					fprintf(convfiles[sendernum], "\t%s%s",
 							fn, a?" (M)":"");
 				}
@@ -596,6 +610,7 @@ int main(int argc, char *argv[])
                         #endif
 		} else
 		if (msgtag==MSG_FATAL) {
+
                         pvm_upkstr(module);
                         pvm_upkstr(buff);
                         msg_new(sender, _("%s: FATAL: %s"), module, buff);
