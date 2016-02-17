@@ -556,8 +556,8 @@ int main(int argc, char *argv[])
 	/*** MAIN LOOP STARTS HERE ***/
 
 	numlocals=0;
-	int recvi, info, unpack1, unpack2, unpack3, unpack4, *position, strsize;
-	MPI_Status *st1;
+	int recvi, recvi2, recvi3, info, unpack1, unpack2, unpack3, unpack4, unpack5,unpack6, unpack7, unpack8, unpack9, unpack10, unpack11, unpack12 *position, strsize, intarr[3];
+	MPI_Status *st1, *st2;
 	MPI_Info *inf;
 
         while (cnt_stopped<nodenum) {
@@ -610,28 +610,36 @@ int main(int argc, char *argv[])
                         #endif
 		} else
 		if (msgtag==MSG_FATAL) {
-
-                        pvm_upkstr(module);
-                        pvm_upkstr(buff);
+                        unpack5=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+                        unpack6=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &module, strsize, MPI_CHAR, MPI_COMM_WORLD);
+                        unpack7=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+                        unpack8=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &buff, strsize, MPI_CHAR, MPI_COMM_WORLD);
+                        //pvm_upkstr(module);
+                        //pvm_upkstr(buff);
                         msg_new(sender, _("%s: FATAL: %s"), module, buff);
                         cnt_stopped++;
                         node_stop(sendernum);
                 } else
 		if (msgtag==MSG_NODEKILL) {
-			pvm_upkint(&a, 1, 1);
-			c=node_find(a);
-			if(c==-1) {
-				error(_("received quit notification "
-						"from unknown node %x"), a);
-			} else if(!nodeinfo[c].dead) {
-				error(_("node %x has unexpectedly quit"), a);
-				cnt_stopped++;
-				node_stop(c);
+//            unpack9=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
+//			pvm_upkint(&a, 1, 1);
+//			c=node_find(a);
+//			if(c==-1) {
+//				error(_("received quit notification "
+//						"from unknown node %x"), a);
+//			} else if(!nodeinfo[c].dead) {
+//				error(_("node %x has unexpectedly quit"), a);
+//				cnt_stopped++;
+//				node_stop(c);
 			}
 		} else
                 if (msgtag==MSG_INFO||msgtag==MSG_ERROR||msgtag==MSG_DEBUG) {
-                        pvm_upkstr(module);
-                        pvm_upkstr(buff);
+                        unpack9=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+                        unpack10=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &module, strsize, MPI_CHAR, MPI_COMM_WORLD);
+                        unpack11=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+                        unpack12=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &buff, strsize, MPI_CHAR, MPI_COMM_WORLD);
+                        //pvm_upkstr(module);
+                        //pvm_upkstr(buff);
 			msg_new(sender, "%s: %s", module, buff);
                 } else
                 if (msgtag==MSG_RESULTDATA) {
@@ -651,10 +659,19 @@ int main(int argc, char *argv[])
 			error(_("node %x is reporting too soon"), sender);
 		} else
 		if (msgtag==MSG_REPORT) {
-                        pvm_upkint(&c, 1, 1);
-                        pvm_upkint(&a, 1, 1);
-                        pvm_upkint(&d, 1, 1);
-                        pvm_upkint(subtotals, gnum, 1);
+                        recvi4=MPI_Recv(&intarr[0], 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi4=MPI_Recv(&intarr[1], 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi4=MPI_Recv(&intarr[2], 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi4=MPI_Recv(&intarr[3], 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        c=intarr[0];
+                        a=intarr[1];
+                        d=intarr[2];
+                        subtotals=intarr[3];
+
+//                        pvm_upkint(&c, 1, 1);
+//                        pvm_upkint(&a, 1, 1);
+//                        pvm_upkint(&d, 1, 1);
+//                        pvm_upkint(subtotals, gnum, 1);
 
 			if(verbosity>=MSG_REPORT) {
 				counter_update(sender, c, d, a);
