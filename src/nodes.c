@@ -188,6 +188,7 @@ int n, c, p, id;
 				info[n].hi_name);
 		}
 		else {
+///////////???
 			mpimaker = MPI_Init(&nodereq, &argv);
 			mpimaker = MPI_Comm_rank(comm, &id);
 			mpimaker = MPI_Comm_size(comm, &p);

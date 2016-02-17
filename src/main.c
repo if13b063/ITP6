@@ -337,13 +337,12 @@ int main_loop()
 #ifdef USE_MPI
             int send[3];
             int mpisend;
-            MPI_Comm comm;
 
             send[0]=&tables[0]->fitness;
             send[1]=&pop->gencnt;
             send[2]=&tables[0]->possible;
             send[3]=tables[0]->subtotals;
-            mpisend=MPI_Send(&send, 4, MPI_INT, parent, MSG_REPORT, comm);
+            mpisend=MPI_Send(&send, 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
 
 /*
         	#elifdef HAVE_LIBPVM3
@@ -383,10 +382,9 @@ int main_loop()
 
             #ifdef USE_MPI
             int mpiiprobe;
-            MPI_Comm comm2;
             MPI_Status *status2;
             int *flag;
-            mpiiprobe=MPI_Iprobe(0, MSG_MASTERKILL, comm2, *flag, *status2);
+            mpiiprobe=MPI_Iprobe(0, MSG_MASTERKILL, MPI_COMM_WORLD, *flag, *status2);
 )
         	if (*flag==false) {
 			return(2);
@@ -406,10 +404,10 @@ int main_loop()
 			c=1;
 			#ifdef USE_MPI
 			int mpisend2, mpirecv;
-			MPI_Comm comm3, comm4;
 			MPI_Status *status3;
-			mpisend2=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, comm3);
-			mpirecv=MPI_Recv(&c, 1, MPI_INT, parent, MSG_LOCALACK, comm4, *status3);
+
+			mpisend2=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, MPI_COMM_WORLD);
+			mpirecv=MPI_Recv(&c, 1, MPI_INT, parent, MSG_LOCALACK, MPI_COMM_WORLD, *status3);
 
 /*
 			#elifdef HAVE_LIBPVM3
@@ -427,8 +425,8 @@ int main_loop()
 				#ifdef USE_MPI
 				c=0;
 				int mpisend3;
-				MPI_Comm comm5;
-				mpisend3=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, comm5);
+
+				mpisend3=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, MPI_COMM_WORLD);
 /*
 				#elifdef HAVE_LIBPVM3
 				c=0;
@@ -457,12 +455,12 @@ int main_loop()
 		 * migration from this node */
 		 #ifdef USE_MPI
 		 int mpiiprobe2, mpirecv2;
-            MPI_Comm comm6, comm7;
             MPI_Status *status4, *status5;
             int *flag2;
-            mpiiprobe2=MPI_Iprobe(parent, MSG_SIBLING, comm6, *flag, *status4);
+
+            mpiiprobe2=MPI_Iprobe(parent, MSG_SIBLING, MPI_COMM_WORLD, *flag, *status4);
         	if (*flag2==false) {
-        	mpirecv2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, comm7, *status5);
+        	mpirecv2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, *status5);
 			debug(_("New sibling %x"), sibling);
 	        }
 /*
@@ -482,25 +480,24 @@ static void send_fitness_info()
 	int n, counter=0, strsize;
 	fitnessfunc *cur;
     int mpisend4, mpipack;
-    MPI_Comm comm8, comm9;
-    char fitbuff[1000];
+    char fitbuff[256];
 
-    mpipack=MPI_Pack(&mod_fitnessnum, 1, MPI_INT, *fitbuff, 1000, &counter, comm9);
+    mpipack=MPI_Pack(&mod_fitnessnum, 1, MPI_INT, *fitbuff, 256, &counter, MPI_COMM_WORLD);
 
 
 	n=0;
 	for(cur=mod_fitnessfunc;cur!=NULL;cur=cur->next) {
         counter++;
         strsize=strlen(cur->name);
-		mpipack=MPI_Pack(cur->name, strsize, MPI_CHAR, *fitbuff, 1000, &counter, comm9);
+		mpipack=MPI_Pack(cur->name, strsize, MPI_CHAR, *fitbuff, 256, &counter, MPI_COMM_WORLD);
 		counter++;
-		mpipack=MPI_Pack(&cur->man, 1, MPI_INT, *fitbuff, 1000, &counter, comm9);
+		mpipack=MPI_Pack(&cur->man, 1, MPI_INT, *fitbuff, 256, &counter, MPI_COMM_WORLD);
 		n++;
 	}
 
 	assert(n==mod_fitnessnum);
 
-        mpisend4=MPI_Send(fitbuff, counter, MPI_PACKED, parent, MSG_MODINFO, comm8);
+        mpisend4=MPI_Send(fitbuff, counter, MPI_PACKED, parent, MSG_MODINFO, MPI_COMM_WORLD);
 }
 /*
 #elifdef HAVE_LIBPVM3
@@ -660,11 +657,10 @@ int main(int argc, char *argv[])
 
 #ifdef USE_MPI
     int mpi_receve;
-    MPI_Comm com;
     MPI_Status *stat;
     locale=malloc(LINEBUFFSIZE);
     //not finished function
-    mpi_receve=MPI_Recv(&locale, 1, MPI_CHAR, parent, MSG_PARAMS, com, *stat);
+    mpi_receve=MPI_Recv(&locale, 1, MPI_CHAR, parent, MSG_PARAMS, MPI_COMM_WORLD, *stat);
 
 
 	#ifdef HAVE_SETLOCALE
@@ -780,9 +776,9 @@ int main(int argc, char *argv[])
 
         #ifdef USE_MPI
         int mpir;
-        MPI_Comm com2;
         MPI_Status *stat2;
-        mpir=MPI_Recv(&restore, 1, MPI_INT, parent, MSG_RESTOREPOP, com2, *stat2);
+
+        mpir=MPI_Recv(&restore, 1, MPI_INT, parent, MSG_RESTOREPOP, MPI_COMM_WORLD, *stat2);
 
 /*
         #elifdef HAVE_LIBPVM3
@@ -849,9 +845,8 @@ int main(int argc, char *argv[])
 
         #ifdef HAVE_LIBPVM3
         int mpir2;
-        MPI_Comm com3;
         MPI_Status *stat3;
-        mpir2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, com3, *stat3);
+        mpir2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, *stat3);
 /*
         #elifdef HAVE_LIBPVM3
         pvm_recv(parent, MSG_SIBLING);
