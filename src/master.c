@@ -631,7 +631,7 @@ int main(int argc, char *argv[])
 //				error(_("node %x has unexpectedly quit"), a);
 //				cnt_stopped++;
 //				node_stop(c);
-			}
+//			}
 		} else
                 if (msgtag==MSG_INFO||msgtag==MSG_ERROR||msgtag==MSG_DEBUG) {
                         unpack9=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
