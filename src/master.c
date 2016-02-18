@@ -556,7 +556,7 @@ int main(int argc, char *argv[])
 	/*** MAIN LOOP STARTS HERE ***/
 
 	numlocals=0;
-	int recvi, recvi2, recvi3, info, unpack1, unpack2, unpack3, unpack4, unpack5,unpack6, unpack7, unpack8, unpack9, unpack10, unpack11, unpack12 *position, strsize, intarr[3];
+	int recvi, recvi2, recvi3, recvi4, recvi5, recvi6, recvi7, recvi8, info, unpack1, unpack2, unpack3, unpack4, unpack5, unpack6, unpack7, unpack8, unpack9, unpack10, unpack11, unpack12, unpack13, *position, strsize, intarr[3];
 	MPI_Status *st1, *st2;
 	MPI_Info *inf;
 
@@ -659,14 +659,13 @@ int main(int argc, char *argv[])
 			error(_("node %x is reporting too soon"), sender);
 		} else
 		if (msgtag==MSG_REPORT) {
-                        recvi4=MPI_Recv(&intarr[0], 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        recvi4=MPI_Recv(&intarr[1], 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        recvi4=MPI_Recv(&intarr[2], 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        recvi4=MPI_Recv(&intarr[3], 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi5=MPI_Recv(&intarr, 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi6=MPI_Recv(&intarr, 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi7=MPI_Recv(&intarr, 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi8=MPI_Recv(&subtotals, gnum, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
                         c=intarr[0];
                         a=intarr[1];
                         d=intarr[2];
-                        subtotals=intarr[3];
 
 //                        pvm_upkint(&c, 1, 1);
 //                        pvm_upkint(&a, 1, 1);
@@ -697,7 +696,8 @@ int main(int argc, char *argv[])
                         node_stop(sendernum);
 		} else
 		if (msgtag==MSG_LOCALSYN) {
-			pvm_upkint(&c, 1, 1);
+            reccvi4=MPI_Recv(&c, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+//			pvm_upkint(&c, 1, 1);
 
 			if(!c) {
 				numlocals--;
@@ -711,9 +711,10 @@ int main(int argc, char *argv[])
 				} else {
 					c=0;
 				}
-        	        	pvm_initsend(0);
-				pvm_pkint(&c, 1, 1);
-	        		pvm_send(sender, MSG_LOCALACK);
+				MPI_Send(&c, 1, MPI_INT, sender, MSG_LOCALACK, MPI_COMM_WORLD);
+//                pvm_initsend(0);
+//				pvm_pkint(&c, 1, 1);
+//                pvm_send(sender, MSG_LOCALACK);
 			}
                 } else
                 {
@@ -766,7 +767,8 @@ int main(int argc, char *argv[])
         free(nodeinfo);
         free(buff);
 
-        pvm_exit();
+        //pvm_exit();
+        MPI_Finalize();
         if (ctrlc) {
 		exit(1);
 	} else if(cnt_recv==0) {
