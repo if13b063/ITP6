@@ -659,13 +659,10 @@ int main(int argc, char *argv[])
 			error(_("node %x is reporting too soon"), sender);
 		} else
 		if (msgtag==MSG_REPORT) {
-                        recvi5=MPI_Recv(&intarr, 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        recvi6=MPI_Recv(&intarr, 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        recvi7=MPI_Recv(&intarr, 4, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi5=MPI_Recv(&c, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi6=MPI_Recv(&a, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                        recvi7=MPI_Recv(&d, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
                         recvi8=MPI_Recv(&subtotals, gnum, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        c=intarr[0];
-                        a=intarr[1];
-                        d=intarr[2];
 
 //                        pvm_upkint(&c, 1, 1);
 //                        pvm_upkint(&a, 1, 1);
