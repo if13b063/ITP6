@@ -274,8 +274,26 @@ void main_rand_init()
 int main_loop()
 {
 	int c;
-        int g1, g2;
-
+    int g1, g2;
+    
+    #ifdef USE_MPI
+    MPI_Status statussendpop;
+	int mpisendpop, flag, mpisendreport;
+    int none=0;
+    
+    MPI_Status status2;
+    int mpiiprobe;
+    
+    int mpisend2, mpirecv;
+	MPI_Status status3;
+    
+    int mpisend3;
+    
+    int mpiiprobe2, mpirecv2;
+    MPI_Status status4, status5;
+    int flag2;
+    #endif
+    
     #ifndef USE_MPI
 	char *filename;
 	int b;
@@ -302,13 +320,7 @@ int main_loop()
         	/* Save population if interrupt was received */
 
 #ifdef USE_MPI
-	MPI_Status *statussendpop;
-	int mpisendpop;
-	int flag;
-	int none=0;
-
-
-      if(MPI_Iprobe(0, MSG_SENDPOP, MPI_COMM_WORLD, *flag, *statussendpop)==MPI_SUCCESS){
+      if(MPI_Iprobe(0, MSG_SENDPOP, MPI_COMM_WORLD, &flag, &statussendpop)==MPI_SUCCESS){
           mpisendpop=MPI_Send(&none, 1, MPI_INT, parent, MSG_POPDATA, MPI_COMM_WORLD);
 
 			population_send(pop, parent, MSG_POPDATA);
@@ -340,12 +352,10 @@ int main_loop()
 		/* Report the current state of the population */
 
 #ifdef USE_MPI
-            int mpisend;
-
-            mpisend=MPI_Send(&tables[0]->fitness, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
-            mpisend=MPI_Send(&pop->gencnt, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
-            mpisend=MPI_Send(&tables[0]->possible, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
-            mpisend=MPI_Send(tables[0]->subtotals, mod_fitnessnum, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
+            mpisendreport=MPI_Send(&tables[0]->fitness, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
+            mpisendreport=MPI_Send(&pop->gencnt, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
+            mpisendreport=MPI_Send(&tables[0]->possible, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
+            mpisendreport=MPI_Send(tables[0]->subtotals, mod_fitnessnum, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
 
 /*
         	#elifdef HAVE_LIBPVM3
@@ -384,12 +394,9 @@ int main_loop()
 		/* Stop the main loop if the parent process was killed */
 
             #ifdef USE_MPI
-            int mpiiprobe;
-            MPI_Status *status2;
-            int *flag;
-            mpiiprobe=MPI_Iprobe(0, MSG_MASTERKILL, MPI_COMM_WORLD, *flag, *status2);
-)
-        	if (*flag==false) {
+            mpiiprobe=MPI_Iprobe(0, MSG_MASTERKILL, MPI_COMM_WORLD, &flag, &status2);
+
+        	if (flag==false) {
 			return(2);
         	}
 /*
@@ -406,11 +413,8 @@ int main_loop()
 		if (g2==par_localtresh) {
 			c=1;
 			#ifdef USE_MPI
-			int mpisend2, mpirecv;
-			MPI_Status *status3;
-
 			mpisend2=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, MPI_COMM_WORLD);
-			mpirecv=MPI_Recv(&c, 1, MPI_INT, parent, MSG_LOCALACK, MPI_COMM_WORLD, *status3);
+			mpirecv=MPI_Recv(&c, 1, MPI_INT, parent, MSG_LOCALACK, MPI_COMM_WORLD, &status3);
 
 /*
 			#elifdef HAVE_LIBPVM3
@@ -427,8 +431,6 @@ int main_loop()
 				lsearch_table(tables[0]);
 				#ifdef USE_MPI
 				c=0;
-				int mpisend3;
-
 				mpisend3=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, MPI_COMM_WORLD);
 /*
 				#elifdef HAVE_LIBPVM3
@@ -457,15 +459,11 @@ int main_loop()
 	        /* Get a task id of another node that will receive
 		 * migration from this node */
 		 #ifdef USE_MPI
-		 int mpiiprobe2, mpirecv2;
-            MPI_Status *status4, *status5;
-            int *flag2;
-
-            mpiiprobe2=MPI_Iprobe(parent, MSG_SIBLING, MPI_COMM_WORLD, *flag, *status4);
-        	if (*flag2==false) {
-        	mpirecv2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, *status5);
-			debug(_("New sibling %x"), sibling);
-	        }
+         mpiiprobe2=MPI_Iprobe(parent, MSG_SIBLING, MPI_COMM_WORLD, &flag2, &status4);
+         if (flag2==false) {
+            mpirecv2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, &status5);
+            debug(_("New sibling %x"), sibling);
+	     }
 /*
 		#elifdef HAVE_LIBPVM3
         	if (pvm_nrecv(parent, MSG_SIBLING)>0) {
@@ -529,25 +527,38 @@ static void send_fitness_info()
 
 int main(int argc, char *argv[])
 {
-        int c;
+    int c;
 
-        char *xmlconfig;
+    char *xmlconfig;
 
-        int restore;
+    int restore;
 	int result;
 
-        FILE *saved;
+    FILE *saved;
 
     #ifdef USE_MPI
 	char *locale;
+    
+///////MSG_PARAMS fehlt noch (ab Zeile 667)
+    
+    int mpir;
+    MPI_Status stat2;
+    
+    int mpir2;
+    MPI_Status stat3;
+    
+    int mpixmlnamesend;
+	int none=0;
+    
 /*
-        #elifdef HAVE_LIBPVM3
-	char *locale;
-        #else
+    #elifdef HAVE_LIBPVM3
+	  char *locale;
+ */
+    #else
 	int timeout;
-        char *filename;
-*/
-        #endif
+    char *filename;
+
+    #endif
 
 	/* Set default locale */
 
@@ -661,10 +672,10 @@ int main(int argc, char *argv[])
 
 #ifdef USE_MPI
     int mpi_receve;
-    MPI_Status *stat;
+    MPI_Status stat;
     locale=malloc(LINEBUFFSIZE);
-    //not finished function
-    mpi_receve=MPI_Recv(&locale, 1, MPI_CHAR, parent, MSG_PARAMS, MPI_COMM_WORLD, *stat);
+//////not finished function
+    mpi_receve=MPI_Recv(&locale, 1, MPI_CHAR, parent, MSG_PARAMS, MPI_COMM_WORLD, &stat);
 
 
 	#ifdef HAVE_SETLOCALE
@@ -779,10 +790,7 @@ int main(int argc, char *argv[])
 	/* Check if we need to restore the population */
 
         #ifdef USE_MPI
-        int mpir;
-        MPI_Status *stat2;
-
-        mpir=MPI_Recv(&restore, 1, MPI_INT, parent, MSG_RESTOREPOP, MPI_COMM_WORLD, *stat2);
+        mpir=MPI_Recv(&restore, 1, MPI_INT, parent, MSG_RESTOREPOP, MPI_COMM_WORLD, &stat2);
 
 /*
         #elifdef HAVE_LIBPVM3
@@ -844,13 +852,11 @@ int main(int argc, char *argv[])
 
 	cache_init();
 
-        /* Get a task id of another node that will receive
+    /* Get a task id of another node that will receive
 	 * migration from this node */
 
-        #ifdef HAVE_LIBPVM3
-        int mpir2;
-        MPI_Status *stat3;
-        mpir2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, *stat3);
+        #ifdef USE_MPI
+        mpir2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, &stat3);
 /*
         #elifdef HAVE_LIBPVM3
         pvm_recv(parent, MSG_SIBLING);
@@ -871,8 +877,8 @@ int main(int argc, char *argv[])
         ctrlc=0;
         signal(SIGINT, sighandler);
         signal(SIGALRM, sighandler);
-	alarm(timeout*60);
-        #endif
+	    alarm(timeout*60);
+    #endif
 
 	/* Start main loop */
 
@@ -912,9 +918,7 @@ int main(int argc, char *argv[])
     #ifdef USE_MPI
 //		pvm_initsend(0);
 //		pvm_send(parent, MSG_RESULTDATA);
-		int mpixmlnamesend;
-		int none=0;
-
+		
 		mpixmlsend=MPI_Send(&none, 1, MPI_INT, parent, MSG_RESULTDATA, MPI_COMM_WORLD);
 
 		if (file_send(xmlconfig, parent, MSG_RESULTDATA)) {
