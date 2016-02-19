@@ -134,7 +134,7 @@ void print_syntax()
         printf(_("\
   -n NODES              set number of computing nodes (default 4)\n"));
 
-        #elifdef HAVE_LIBPVM3
+//        #elifdef HAVE_LIBPVM3
 //          printf(_("\
 //    -n NODES              set number of computing nodes (default 4)\n"));
         #endif
@@ -187,7 +187,7 @@ void sighandler(int num)
 	}
         if (ctrlc<1) {
                 c=0;
-                for(int count=0, count<nodenum, count++)
+                for(int count=0; count<nodenum; count++)
                 {
                     mpisend=MPI_Send(&c, 1, MPI_INT, count, MSG_SENDPOP, MPI_COMM_WORLD);
                 }
