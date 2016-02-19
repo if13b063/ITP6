@@ -35,6 +35,7 @@
 
 #ifdef USE_MPI
     #include "mpi.h"
+    #include <signal.h>
 /*
 #elifdef HAVE_LIBPVM3
   #include <pvm3.h>
