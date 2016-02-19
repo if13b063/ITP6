@@ -56,6 +56,12 @@
 
 int sibling;
 
+int null=0, mpisend;
+
+int flag;
+MPI_Status status;
+
+
 /** @brief Perform crossover operation between two timetables.
  *
  * @param s1 First parent.
@@ -196,8 +202,8 @@ void new_generation(population *pop)
 
 		migrsize=size/par_migrpart;
 
-		pvm_initsend(0);
-		pvm_send(sibling, MSG_MIGRATION);
+        mpisend=MPI_Send(null, 1, MPI_INT, sibling, MSG_MIGRATION, MPI_COMM_WORLD);
+		
 
 		table_send(pop, migrsize, sibling, MSG_MIGRATION);
 	}
@@ -272,10 +278,12 @@ void new_generation(population *pop)
 	/* Receive migration */
 
     #ifdef USE_MPI
-        if ((n=pvm_nrecv(-1, MSG_MIGRATION))>0) {
+        if ((MPI_Iprobe(MPI_ANY_SOURCE, MSG_MIGRATION, MPI_COMM_WORLD, &flag, &status)==MPI_SUCCSESS)){
 		int msgtag, sender;
-
-                pvm_bufinfo(n, NULL, &msgtag, &sender);
+                
+                sender=status(MPI_SOURCE);
+                msgtag=MSG_MIGRATION;
+                
 		debug("receiving migration from %x", sender);
 
 		migrsize=size/par_migrpart;
