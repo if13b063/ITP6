@@ -76,7 +76,7 @@ static population *pop=NULL;
 //char *prefix;
 //FILE *convfile;
 //#endif
-
+/*
 #ifndef USE_MPI
 static void sighandler(int num)
 {
@@ -88,7 +88,7 @@ static void sighandler(int num)
 }
 
 /* Concatenate prefix and filename. Required memory is allocated and
- * must be freed after use. */
+//* must be freed after use. *
 static char *addprefix(char *prefix, char *filename)
 {
 	int c;
@@ -130,8 +130,8 @@ static char *addprefix(char *prefix, char *filename)
 
 	return(result);
 }
-*/
 #endif
+*/
 
 static int lsearch_domain_check(int tupleid, int typeid, int resid)
 {
@@ -320,7 +320,7 @@ int main_loop()
         	/* Save population if interrupt was received */
 
 #ifdef USE_MPI
-      if(MPI_Iprobe(0, MSG_SENDPOP, MPI_COMM_WORLD, &flag, &statussendpop)==MPI_SUCCESS){
+      if((MPI_Iprobe(0, MSG_SENDPOP, MPI_COMM_WORLD, &flag, &statussendpop))==MPI_SUCCESS){
           mpisendpop=MPI_Send(&none, 1, MPI_INT, parent, MSG_POPDATA, MPI_COMM_WORLD);
 
 			population_send(pop, parent, MSG_POPDATA);
@@ -365,7 +365,7 @@ int main_loop()
         	pvm_pkint(&tables[0]->possible, 1, 1);
         	pvm_pkint(tables[0]->subtotals, mod_fitnessnum, 1);
         	pvm_send(parent, MSG_REPORT);*/
-        	#else
+/*        	#else
         	printf("-------%d\n", pop->gencnt);
         	for(c=0;c<5;c++) {
                 	printf("%d (%d)", tables[c]->fitness, tables[c]->possible);
@@ -381,6 +381,7 @@ int main_loop()
 		}
 		fprintf(convfile, "\n");
         	fflush(convfile);
+ */
         	#endif
 
 		/* Update the counter of the number of consequential
@@ -396,7 +397,7 @@ int main_loop()
             #ifdef USE_MPI
             mpiiprobe=MPI_Iprobe(0, MSG_MASTERKILL, MPI_COMM_WORLD, &flag, &status2);
 
-        	if (flag==false) {
+        	if (mpiiprobe==MPI_SUCCESS) {
 			return(2);
         	}
 /*
@@ -460,7 +461,7 @@ int main_loop()
 		 * migration from this node */
 		 #ifdef USE_MPI
          mpiiprobe2=MPI_Iprobe(parent, MSG_SIBLING, MPI_COMM_WORLD, &flag2, &status4);
-         if (flag2==false) {
+         if (fmpiiprobe2lag2==MPI_SUCCESS) {
             mpirecv2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, &status5);
             debug(_("New sibling %x"), sibling);
 	     }
@@ -549,7 +550,7 @@ int main(int argc, char *argv[])
     int mpir2;
     MPI_Status stat3;
     
-    int mpixmlnamesend;
+    int mpixmlsend;
 	int none=0;
     
 /*
@@ -580,23 +581,24 @@ int main(int argc, char *argv[])
 
         /* Parse command line options */
 
-	#ifndef USE_MPI
-        prefix="./";
-        restore=0;
+/*	#ifndef USE_MPI
+    prefix="./";
+    restore=0;
 	timeout=0;
 /*
 	#elifndef HAVE_LIBPVM3
         prefix="./";
         restore=0;
 	timeout=0;
-*/
+
 	#endif
+*/
 
 	verbosity=102;
 
         while ((c=getopt(argc, argv, "o:rd:t:p:i:n:"))!=-1) {
                 switch (c) {
-            #ifndef USE_MPI
+/*            #ifndef USE_MPI
                         case 'o': prefix=strdup(optarg);
                                   break;
 			case 't': sscanf(optarg, "%d", &timeout);
@@ -611,8 +613,9 @@ int main(int argc, char *argv[])
 				  break;
                         case 'r': restore=1;
 				  break;
-*/
+
 			#endif
+*/
 			case 'd': sscanf(optarg, "%d", &verbosity);
 				  verbosity+=100;
 				  break;
@@ -737,7 +740,7 @@ int main(int argc, char *argv[])
 
         /* Open file for convergence info */
 
- #ifndef USE_MPI
+/* #ifndef USE_MPI
 	filename=addprefix(prefix, "conv.txt");
 	if(restore>0) {
 	        convfile=fopen(filename, "a");
@@ -754,9 +757,9 @@ int main(int argc, char *argv[])
 		convfile=fopen(filename, "w");
 	}
 	free(filename);
-*/
-        #endif
 
+        #endif
+*/
 	/* Report how many fitness functions are defined
 	 * and what are their names */
 
@@ -958,15 +961,15 @@ int main(int argc, char *argv[])
 	#endif
 
         /* Close file for convergence info */
-
+/*
         #ifndef USE_MPI
         fclose(convfile);
-/*
+
         #elifndef HAVE_LIBPVM3
         fclose(convfile);
-*/
-        #endif
 
+        #endif
+*/
 	/* Free data structures */
 
 	cache_exit();

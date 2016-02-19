@@ -37,8 +37,10 @@
 #include "error.h"
 #include "gettext.h"
 
+int running;
 int nodenum;
 int hostnum;
+int mpimaker;
 int *nodetid;
 struct nodeinfos *nodeinfo;
 
@@ -46,13 +48,11 @@ struct nodeinfos *nodeinfo;
 void node_update(int node)
 {
 	int sibling;
-	MPI_Comm comm;
-
-		int sibling, mpisend;
+	int mpisend;
 
     sibling=nodeinfo[node].send;
 
-		mpisend= MPI_Send(&nodetid[sibling], 1, MPI_INT, node, node, comm);
+	mpisend= MPI_Send(&nodetid[sibling], 1, MPI_INT, nodetid[node], MSG_SIBLING, MPI_COMM_WORLD);
 }
 
 /* Returns node number (for use with nodetid and nodeinfo arrays */
@@ -70,13 +70,13 @@ int node_find(int tid)
  * to send migration to another node. We also update nodeinfo struct */
 void node_stop(int num)
 {
-        int recv,send;
+    int recv,send;
 
-        send=nodeinfo[num].send;
-        recv=nodeinfo[num].recv;
+    send=nodeinfo[num].send;
+    recv=nodeinfo[num].recv;
 
-        nodeinfo[send].recv=recv;
-        nodeinfo[recv].send=send;
+    nodeinfo[send].recv=recv;
+    nodeinfo[recv].send=send;
 
 	nodeinfo[num].dead=1;
 
@@ -87,7 +87,7 @@ void node_stop(int num)
  * a node has stopped with local search and continues normal operation) */
 void node_restart(int num)
 {
-        int send;
+    int send;
 	int victim;
 
 	for(victim=0;victim<nodenum;victim++) {
@@ -184,8 +184,7 @@ int n, c, p, id;
 	running = 0;
 	for (n = 0; n<hostnum; n++) {
 		if (nodereq<1) {
-			error(_("Host '%s' is too slow and will be ignored."),
-				info[n].hi_name);
+			error(_("Host '%s' is too slow and will be ignored."));   //	info[n].hi_name);
 		}
 		else {
 ///////////???
@@ -201,8 +200,7 @@ int n, c, p, id;
 			}
 
 			if (p<nodereq) {
-				error(_("Some nodes on host '%s' failed to "
-					"start."), info[n].hi_name);
+				error(_("Some nodes on host '%s' failed to start."));//, info[n].hi_name);
 			}
 
 			if (mpimaker != MPI_SUCCESS) {
