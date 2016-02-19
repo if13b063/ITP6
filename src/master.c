@@ -176,47 +176,7 @@ void print_syntax()
         exit(0);
 }
 
-#ifdef USE_MPI
-void sighandler(int num)
-{
-    int mpisend;
-    mpimaker = MPI_Init(&argc, &argv);
-    int c;
 
-	if(num==SIGALRM) {
-		timeout_reached=1;
-	}
-        if (ctrlc<1) {
-                c=0;
-                for(int count=0; count<nodenum; count++)
-                {
-                    mpisend=MPI_Send(&c, 1, MPI_INT, count, MSG_SENDPOP, MPI_COMM_WORLD);
-                }
-                ctrlc++;
-        } else {
-                exit(1);
-        }
-}
-
-//#elifdef HAVE_LIBPVM3
-//  void sighandler(int num)
-//  {
-//          int c;
-//
-//    if(num==SIGALRM) {
-//      timeout_reached=1;
-//    }
-//          if (ctrlc<1) {
-//                  pvm_initsend(0);
-//                  c=0;
-//                  pvm_pkint(&c, 1, 1);
-//                  pvm_mcast(nodetid, nodenum, MSG_SENDPOP);
-//                  ctrlc++;
-//          } else {
-//                  exit(1);
-//          }
-//  }
-#endif
 
 int main(int argc, char *argv[])
 {
@@ -225,6 +185,7 @@ int main(int argc, char *argv[])
     int c;
 
     #ifdef USE_MPI
+    mpimaker = MPI_Init(&argc, &argv);
     int d, a, msgtag, sender, sendernum;
 	int n;
 
@@ -770,3 +731,45 @@ int main(int argc, char *argv[])
 	   }
    #endif
 }
+
+#ifdef USE_MPI
+void sighandler(int num)
+{
+    int mpisend;
+    
+    int c;
+
+	if(num==SIGALRM) {
+		timeout_reached=1;
+	}
+        if (ctrlc<1) {
+                c=0;
+                for(int count=0; count<nodenum; count++)
+                {
+                    mpisend=MPI_Send(&c, 1, MPI_INT, count, MSG_SENDPOP, MPI_COMM_WORLD);
+                }
+                ctrlc++;
+        } else {
+                exit(1);
+        }
+}
+
+//#elifdef HAVE_LIBPVM3
+//  void sighandler(int num)
+//  {
+//          int c;
+//
+//    if(num==SIGALRM) {
+//      timeout_reached=1;
+//    }
+//          if (ctrlc<1) {
+//                  pvm_initsend(0);
+//                  c=0;
+//                  pvm_pkint(&c, 1, 1);
+//                  pvm_mcast(nodetid, nodenum, MSG_SENDPOP);
+//                  ctrlc++;
+//          } else {
+//                  exit(1);
+//          }
+//  }
+#endif
