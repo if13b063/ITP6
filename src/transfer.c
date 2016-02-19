@@ -49,7 +49,7 @@ int file_recv(char *filename, int sender, int msgtag)
 	char *buff;
 	int notend;
 	int len;
-  MPI_Status status;
+    MPI_Status status;
 
 	buff=malloc(LINEBUFFSIZE);
 	if (buff==NULL) return(-1);
@@ -61,24 +61,24 @@ int file_recv(char *filename, int sender, int msgtag)
 	}
 
 	do {
-    result= MPI_Recv(&notend, 1, MPI_INT, sender, msgtag, MPI_COMM_WORLD, &status);
-			if(result!=MPI_SUCCESS){
-        free(buff);
-        fclose(handle);
-        return(-1);
-      }
-    result= MPI_Recv(&len, 1, MPI_INT, sender, msgtag, MPI_COMM_WORLD, &status);
-			if(result!=MPI_SUCCESS){
-        free(buff);
-        fclose(handle);
-        return(-1);
-      }
+        result= MPI_Recv(&notend, 1, MPI_INT, sender, msgtag, MPI_COMM_WORLD, &status);
+		if(result!=MPI_SUCCESS){
+            free(buff);
+            fclose(handle);
+            return(-1);
+        }
+        result= MPI_Recv(&len, 1, MPI_INT, sender, msgtag, MPI_COMM_WORLD, &status);
+		if(result!=MPI_SUCCESS){
+            free(buff);
+            fclose(handle);
+            return(-1);
+        }
 		result= MPI_Recv(buff, len, MPI_CHAR, sender, msgtag, MPI_COMM_WORLD, &status);
-			if(result!=MPI_SUCCESS){
-        free(buff);
-        fclose(handle);
-        return(-1);
-      }
+		if(result!=MPI_SUCCESS){
+            free(buff);
+            fclose(handle);
+            return(-1);
+        }
 
 		fprintf(handle, "%s", buff);
 	} while (notend);
@@ -312,7 +312,7 @@ int table_send(population *pop, int num, int recipient, int msgtag)
 		tab=pop->tables[n];
 		for(m=0;m<tab->typenum;m++) {
 			size=tab->chr[m].gennum;
-      result = MPI_Send(tab->chr[m].gen, 1, MPI_PACKED, recipient, msgtag, MPI_COMM_WORLD);
+            result = MPI_Send(tab->chr[m].gen, 1, MPI_PACKED, recipient, msgtag, MPI_COMM_WORLD);
 			if(result!=MPI_SUCCESS) return(-1);
 		}
 	}
@@ -331,14 +331,15 @@ population *population_recv(int sender, int msgtag)
 	int size, gencnt;
 	int typenum;
 	int tuplenum;
-  MPI_Status status;
-  int recv[4];
+    MPI_Status status;
+    int recv[4];
 
 	population *pop;
 
-  result=MPI_Recv(&recv, 4, MPI_INT, sender, msgtag, MPI_COMM_WORLD, &status);
-  if(result!=MPI_SUCCESS) return(-1);
-	size=recv[0];
+    result=MPI_Recv(&recv, 4, MPI_INT, sender, msgtag, MPI_COMM_WORLD, &status);
+    if(result!=MPI_SUCCESS) return(-1);
+	
+    size=recv[0];
 	gencnt=recv[1];
 	typenum=recv[2];
 	tuplenum=recv[3];
@@ -366,7 +367,7 @@ population *population_recv(int sender, int msgtag)
 int population_send(population *pop, int recipient, int msgtag)
 {
 	int result;
-  int send[4];
+    int send[4];
 
 	assert(pop!=NULL);
 	assert(pop->size>0);
@@ -386,7 +387,7 @@ int population_send(population *pop, int recipient, int msgtag)
   send[1]=pop->dencnt;
   send[2]=pop->tables[0]->typenum;
   send[3]=pop->tables[0]->chr[0].gennum;
-  mpisend=MPI_Send(&send, 4, MPI_INT, recipient, msgtag, MPI_COMM_WORLD);
+  mpisend=MPI_Send(send, 4, MPI_INT, recipient, msgtag, MPI_COMM_WORLD);
   if(mpisend!=MPI_SUCCESS) return(-1);
 
 	result=table_send(pop, pop->size, recipient, msgtag);

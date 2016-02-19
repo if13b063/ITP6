@@ -179,9 +179,8 @@ void print_syntax()
 void sighandler(int num)
 {
     int mpisend;
-    MPI_Comm comm;
-       mpimaker = MPI_Init(&argc, &argv);
-        int c;
+    mpimaker = MPI_Init(&argc, &argv);
+    int c;
 
 	if(num==SIGALRM) {
 		timeout_reached=1;
@@ -222,34 +221,42 @@ int main(int argc, char *argv[])
 {
 	char *loc=NULL;
 
-        int c;
+    int c;
 
-        #ifdef USE_MPI
-        int d, a, msgtag, sender, sendernum;
+    #ifdef USE_MPI
+    int d, a, msgtag, sender, sendernum;
 	int n;
 
-        double sum;
-        int running;
+    double sum;
+    int running;
 	int nodereq;
-        int restore;
+    int restore;
 
-        int *subtotals;
+    int *subtotals;
 	int gnum;
 
 	struct timeval start,end;
-        char *buff;
+    char *buff;
 	char *module;
-        char fn[256];
+    char fn[256];
 
 	int timeout;
 
 	population *pop=NULL;
 
 	mpimaker = MPI_Init(&argc, &argv);
+    
+    int strsize, mpibcast, mpibcast2;
+    
+    int recvi, recvi2, recvi3, recvi4, recvi5, recvi6, recvi7, recvi8, info;
+    int unpack1, unpack2, unpack3, unpack4, unpack5, unpack6, unpack7, unpack8, unpack9, unpack10, unpack11, unpack12, unpack13;
+    int *position;
+    int intarr[3];
+	MPI_Status st1, st2;
 
-        #ifdef HAVE_CONV
+    #ifdef HAVE_CONV
         FILE **convfiles;
-        #endif
+    #endif
 
 //        #elifdef HAVE_LIBPVM3
 //        int d, a, msgtag, sender, sendernum;
@@ -418,15 +425,16 @@ int main(int argc, char *argv[])
                 exit(1);
         }
 
-        int strsize, mpibcast;
+        
+        
         strsize=strlen(loc);
-        MPI_Comm comm2;
-
+        
         for(int count=0, count<nodenum, count++)
         {
-            mpibcast=MPI_Send(&loc, strsize, MPI_CHAR, count, MSG_PARAMS, MPI_COMM_WORLD);
+            mpibcast=MPI_Send(&strsize, 1, MPI_INT, count, MSG_PARAMS, MPI_COMM_WORLD);
+            mpibcast2=MPI_Send(&loc, strsize, MPI_CHAR, count, MSG_PARAMS, MPI_COMM_WORLD);
         }
-
+        
 	if (file_mcast(argv[optind], nodetid, nodenum, MSG_XMLDATA)) {
                 perror(cmd);
 		error(_("Failed to send problem description '%s' "
@@ -528,9 +536,9 @@ int main(int argc, char *argv[])
 
 	/*** Set up timer and signal handlers ***/
 
-        ctrlc=0;
+    ctrlc=0;
 	timeout_reached=0;
-        signal(SIGINT, sighandler);
+    signal(SIGINT, sighandler);
 	signal(SIGALRM, sighandler);
 	alarm(timeout*60);
 
@@ -556,30 +564,25 @@ int main(int argc, char *argv[])
 	/*** MAIN LOOP STARTS HERE ***/
 
 	numlocals=0;
-	int recvi, recvi2, recvi3, recvi4, recvi5, recvi6, recvi7, recvi8, info, unpack1, unpack2, unpack3, unpack4, unpack5, unpack6, unpack7, unpack8, unpack9, unpack10, unpack11, unpack12, unpack13, *position, strsize, intarr[3];
-	MPI_Status *st1, *st2;
-	MPI_Info *inf;
+	
 
-        while (cnt_stopped<nodenum) {
-                recvi=MPI_Recv(&c, 1, MPI_PACKED, -1, -1, MPI_COMM_WORLD, *st1);
-                //c=pvm_recv(-1, -1);
-                info=MPI_Info_create(*inf);
-                //pvm_bufinfo(c, NULL, &msgtag, &sender);
-
+    while (cnt_stopped<nodenum) {
+        recvi=MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &st1);
+        sender=st1(MPI_SOURCE);
+        msgtag=st1(MPI_TAG);
+        
 		if(msgtag!=MSG_REPORT&&msgtag!=MSG_LOCALSYN) {
 			counter_clear();
 		}
 
-                sendernum=node_find(sender);
+        sendernum=node_find(sender);
 
-                if(sendernum==-1&&msgtag!=MSG_NODEKILL) {
-                        error(_("received message from unknown node %x"), sender);
-                }
+        if(sendernum==-1&&msgtag!=MSG_NODEKILL) {
+            error(_("received message from unknown node %x"), sender);
+        }
 
-                if (msgtag==MSG_MODINFO) {
-                unpack1=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT,
-               MPI_COMM_WORLD);
-			//pvm_upkint(&a, 1, 1);
+        if (msgtag==MSG_MODINFO) {
+            unpack1=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
 
 			debug(_("%x has %d fitness functions"), sender, a);
 
@@ -590,157 +593,148 @@ int main(int argc, char *argv[])
 				error(_("node %x has a different number of modules than others"), sender);
 			}
 
-                        #ifdef HAVE_CONV
+            #ifdef HAVE_CONV
 			if(!restore) {
-	                        fprintf(convfiles[sendernum],
-							"# Gen.\tFitness\tOK");
+                fprintf(convfiles[sendernum], "# Gen.\tFitness\tOK");
 				for(c=0;c<gnum;c++) {
-				unpack2=MPI_Unpack(*fitbuff, 256, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
-				unpack3=MPI_Unpack(*fitbuff, 256, *position, &fn, strsize, MPI_CHAR, MPI_COMM_WORLD);
-                unpack4=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
-					//pvm_upkstr(fn);
-					//pvm_upkint(&a, 1, 1);
-					fprintf(convfiles[sendernum], "\t%s%s",
-							fn, a?" (M)":"");
+                    unpack2=MPI_Unpack(*fitbuff, 256, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+                    unpack3=MPI_Unpack(*fitbuff, 256, *position, &fn, strsize, MPI_CHAR, MPI_COMM_WORLD);
+                    unpack4=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
+					fprintf(convfiles[sendernum], "\t%s%s", fn, a?" (M)":"");
 				}
 				fprintf(convfiles[sendernum], "\n");
 
-	                        fflush(convfiles[sendernum]);
+                fflush(convfiles[sendernum]);
 			}
-                        #endif
+            #endif
 		} else
-		if (msgtag==MSG_FATAL) {
-                        unpack5=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
-                        unpack6=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &module, strsize, MPI_CHAR, MPI_COMM_WORLD);
-                        unpack7=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
-                        unpack8=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &buff, strsize, MPI_CHAR, MPI_COMM_WORLD);
-                        //pvm_upkstr(module);
-                        //pvm_upkstr(buff);
-                        msg_new(sender, _("%s: FATAL: %s"), module, buff);
-                        cnt_stopped++;
-                        node_stop(sendernum);
-                } else
-		if (msgtag==MSG_NODEKILL) {
-//            unpack9=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
-//			pvm_upkint(&a, 1, 1);
-//			c=node_find(a);
-//			if(c==-1) {
-//				error(_("received quit notification "
+		  if (msgtag==MSG_FATAL) {
+            unpack5=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+            unpack6=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &module, strsize, MPI_CHAR, MPI_COMM_WORLD);
+            unpack7=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+            unpack8=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &buff, strsize, MPI_CHAR, MPI_COMM_WORLD);
+
+            msg_new(sender, _("%s: FATAL: %s"), module, buff);
+            cnt_stopped++;
+            node_stop(sendernum);
+        } else
+		  if (msgtag==MSG_NODEKILL) {
+//              unpack9=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
+//			   pvm_upkint(&a, 1, 1);
+//			   c=node_find(a);
+//			   if(c==-1) {
+//			       error(_("received quit notification "
 //						"from unknown node %x"), a);
-//			} else if(!nodeinfo[c].dead) {
-//				error(_("node %x has unexpectedly quit"), a);
-//				cnt_stopped++;
-//				node_stop(c);
-//			}
-		} else
-                if (msgtag==MSG_INFO||msgtag==MSG_ERROR||msgtag==MSG_DEBUG) {
-                        unpack9=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
-                        unpack10=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &module, strsize, MPI_CHAR, MPI_COMM_WORLD);
-                        unpack11=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
-                        unpack12=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &buff, strsize, MPI_CHAR, MPI_COMM_WORLD);
-                        //pvm_upkstr(module);
-                        //pvm_upkstr(buff);
-			msg_new(sender, "%s: %s", module, buff);
-                } else
+//			   } else
+//              if(!nodeinfo[c].dead) {
+//			      error(_("node %x has unexpectedly quit"), a);
+//				  cnt_stopped++;
+//				  node_stop(c);
+//			   }
+		  } else
+            if (msgtag==MSG_INFO||msgtag==MSG_ERROR||msgtag==MSG_DEBUG) {
+                unpack9=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+                unpack10=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &module, strsize, MPI_CHAR, MPI_COMM_WORLD);
+                unpack11=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+                unpack12=MPI_Unpack(*buff, LINEBUFFSIZE, *position, &buff, strsize, MPI_CHAR, MPI_COMM_WORLD);
+
+			    msg_new(sender, "%s: %s", module, buff);
+            } else
                 if (msgtag==MSG_RESULTDATA) {
-                        info(_("node %x is uploading the result"), sender);
-                        snprintf(fn, 256, "%sresult%d.xml", prefix, sendernum);
+                    info(_("node %x is uploading the result"), sender);
+                    snprintf(fn, 256, "%sresult%d.xml", prefix, sendernum);
 
-			if (file_recv(fn, sender, MSG_RESULTDATA)) {
-                                perror(cmd);
-                        }
+			         if (file_recv(fn, sender, MSG_RESULTDATA)) {
+                        perror(cmd);
+                    }
 
-                        cnt_recv++;
-			cnt_stopped++;
-
-                        node_stop(sendernum);
+                    cnt_recv++;
+	           		cnt_stopped++;
+                       
+                    node_stop(sendernum);
                 } else
-                if (msgtag==MSG_REPORT&&gnum<0) {
-			error(_("node %x is reporting too soon"), sender);
-		} else
-		if (msgtag==MSG_REPORT) {
-                        recvi5=MPI_Recv(&c, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        recvi6=MPI_Recv(&a, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        recvi7=MPI_Recv(&d, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-                        recvi8=MPI_Recv(&subtotals, gnum, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
+                    if (msgtag==MSG_REPORT&&gnum<0) {
+                        error(_("node %x is reporting too soon"), sender);
+                    } else
+		              if (msgtag==MSG_REPORT) {
+                        recvi5=MPI_Recv(&c, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
+                        recvi6=MPI_Recv(&a, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
+                        recvi7=MPI_Recv(&d, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
+                        recvi8=MPI_Recv(&subtotals, gnum, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
 
-//                        pvm_upkint(&c, 1, 1);
-//                        pvm_upkint(&a, 1, 1);
-//                        pvm_upkint(&d, 1, 1);
-//                        pvm_upkint(subtotals, gnum, 1);
-
-			if(verbosity>=MSG_REPORT) {
-				counter_update(sender, c, d, a);
-			}
-			nodeinfo[sendernum].generations++;
+			            if(verbosity>=MSG_REPORT) {
+                            counter_update(sender, c, d, a);
+			            }
+			            nodeinfo[sendernum].generations++;
+                        
                         #ifdef HAVE_CONV
-                        fprintf(convfiles[sendernum], "%d\t%d\t%d", a, c, d);
-                        for(c=0;c<gnum;c++) fprintf(convfiles[sendernum], "\t%d", subtotals[c]);
-                        fprintf(convfiles[sendernum], "\n");
-                        fflush(convfiles[sendernum]);
+                            fprintf(convfiles[sendernum], "%d\t%d\t%d", a, c, d);
+                            for(c=0;c<gnum;c++)
+                                fprintf(convfiles[sendernum], "\t%d", subtotals[c]);
+                            
+                            fprintf(convfiles[sendernum], "\n");
+                            fflush(convfiles[sendernum]);
                         #endif
-                } else
-                if (msgtag==MSG_POPDATA) {
+                    } else
+                    if (msgtag==MSG_POPDATA) {
                         info(_("receiving population from %x"), sender);
 
                         snprintf(fn, 256, "%ssave%d.txt", prefix, sendernum);
 
-			pop=population_recv(sender, MSG_POPDATA);
-			population_save(fn, pop);
-			population_free(pop);
+                        pop=population_recv(sender, MSG_POPDATA);
+                        population_save(fn, pop);
+                        population_free(pop);
 
                         cnt_stopped++;
                         node_stop(sendernum);
-		} else
-		if (msgtag==MSG_LOCALSYN) {
-            reccvi4=MPI_Recv(&c, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, *st2);
-//			pvm_upkint(&c, 1, 1);
+		          } else
+                    if (msgtag==MSG_LOCALSYN) {
+                        reccvi4=MPI_Recv(&c, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
 
-			if(!c) {
-				numlocals--;
-
-				node_restart(sendernum);
-			} else {
-				if(numlocals!=maxlocals) {
-					c=1;
-					numlocals++;
-					node_stop(sendernum);
-				} else {
-					c=0;
-				}
-				MPI_Send(&c, 1, MPI_INT, sender, MSG_LOCALACK, MPI_COMM_WORLD);
-//                pvm_initsend(0);
-//				pvm_pkint(&c, 1, 1);
-//                pvm_send(sender, MSG_LOCALACK);
-			}
-                } else
-                {
-                        error(_("unknown message received from %x. Perhaps a version mismatch?"), sender);
-                }
-        }
+                        if(!c) {
+                            numlocals--;
+                            node_restart(sendernum);
+                        } else {
+                            if(numlocals!=maxlocals) {
+                                c=1;
+                                numlocals++;
+                                node_stop(sendernum);
+                            } 
+                            else {
+                                c=0;
+                            }
+                            
+                            MPI_Send(&c, 1, MPI_INT, sender, MSG_LOCALACK, MPI_COMM_WORLD);
+                        }
+                    } else
+                    {
+                            error(_("unknown message received from %x. Perhaps a version mismatch?"), sender);
+                    }
+    }
 
 	msg_flush();
 
-        #ifdef HAVE_CONV
-        for(c=0;c<nodenum;c++) fclose(convfiles[c]);
-        free(convfiles);
-        #endif
+    #ifdef HAVE_CONV
+    for(c=0;c<nodenum;c++) fclose(convfiles[c]);
+    
+    free(convfiles);
+    #endif
 
-        if (ctrlc) {
-		if(timeout_reached) {
-			error(_("Time limit reached"));
-		} else {
-			error(_("Received interrupt"));
-		}
+    if (ctrlc) {
+        if(timeout_reached) {
+            error(_("Time limit reached"));
+        } else {
+            error(_("Received interrupt"));
+        }
 	}
 
 	if(cnt_recv<1) {
 		info(_("No results were received"));
 	} else if(cnt_recv<cnt_stopped) {
-		info(_("Some results were received"));
-	} else {
+        info(_("Some results were received"));
+        } else {
 		info(_("All results were received"));
-	}
+	   }
 
 	if(verbosity>=MSG_INFO&&cnt_recv>0) {
 		gettimeofday(&end, NULL);
@@ -760,18 +754,18 @@ int main(int argc, char *argv[])
 		printf(_("total time: %02d:%02d:%02d\n"), d/3600, (d/60)%60, d%60);
 	}
 
-        free(nodetid);
-        free(nodeinfo);
-        free(buff);
+    free(nodetid);
+    free(nodeinfo);
+    free(buff);
 
-        //pvm_exit();
-        MPI_Finalize();
-        if (ctrlc) {
-		exit(1);
+    //pvm_exit();
+    MPI_Finalize();
+    if (ctrlc) {
+        exit(1);
 	} else if(cnt_recv==0) {
 		exit(2);
-	} else {
-		exit(0);
-	}
-        #endif
+	   } else {
+		  exit(0);
+	   }
+   #endif
 }

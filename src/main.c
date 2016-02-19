@@ -539,7 +539,9 @@ int main(int argc, char *argv[])
     #ifdef USE_MPI
 	char *locale;
     
-///////MSG_PARAMS fehlt noch (ab Zeile 667)
+    int mpi_receve, mpi_receve2, strlen2;
+    MPI_Status stat;
+    locale=malloc(LINEBUFFSIZE);
     
     int mpir;
     MPI_Status stat2;
@@ -671,11 +673,8 @@ int main(int argc, char *argv[])
 //	#endif
 
 #ifdef USE_MPI
-    int mpi_receve;
-    MPI_Status stat;
-    locale=malloc(LINEBUFFSIZE);
-//////not finished function
-    mpi_receve=MPI_Recv(&locale, 1, MPI_CHAR, parent, MSG_PARAMS, MPI_COMM_WORLD, &stat);
+    mpi_receve=MPI_Recv(&strlen2, 1, MPI_INT, parent, MSG_PARAMS, MPI_COMM_WORLD, &stat);
+    mpi_receve2=MPI_Recv(&locale, strlen2, MPI_CHAR, parent, MSG_PARAMS, MPI_COMM_WORLD, &stat);
 
 
 	#ifdef HAVE_SETLOCALE
