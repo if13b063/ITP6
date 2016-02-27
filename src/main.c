@@ -32,7 +32,7 @@
 #include <locale.h>
 #endif
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
     #include "mpi.h"
 /*
 #elifdef HAVE_LIBPVM3
@@ -65,7 +65,7 @@ static population *pop=NULL;
 //#ifdef HAVE_LIBPVM3
 //    int parent;
 //#endif
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
     //MPI_Comm parent;
     int parent=0;
 #endif
@@ -76,8 +76,8 @@ static population *pop=NULL;
 //char *prefix;
 //FILE *convfile;
 //#endif
-/*
-#ifndef USE_MPI
+
+/*#ifndef USE_MPI
 static void sighandler(int num)
 {
         if (ctrlc<1) {
@@ -85,10 +85,10 @@ static void sighandler(int num)
         } else {
                 exit(1);
         }
-}
+}*/
 
 /* Concatenate prefix and filename. Required memory is allocated and
-//* must be freed after use. *
+ * must be freed after use. */
 static char *addprefix(char *prefix, char *filename)
 {
 	int c;
@@ -130,8 +130,8 @@ static char *addprefix(char *prefix, char *filename)
 
 	return(result);
 }
-#endif
 */
+//#endif
 
 static int lsearch_domain_check(int tupleid, int typeid, int resid)
 {
@@ -276,7 +276,7 @@ int main_loop()
 	int c;
     int g1, g2;
     
-    #ifdef USE_MPI
+    #ifndef HAVE_LIBPVM3
     MPI_Status statussendpop;
 	int mpisendpop, flag, mpisendreport;
     int none=0;
@@ -319,7 +319,7 @@ int main_loop()
 
         	/* Save population if interrupt was received */
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
       if((MPI_Iprobe(0, MSG_SENDPOP, MPI_COMM_WORLD, &flag, &statussendpop))==MPI_SUCCESS){
           mpisendpop=MPI_Send(&none, 1, MPI_INT, parent, MSG_POPDATA, MPI_COMM_WORLD);
 
@@ -351,7 +351,7 @@ int main_loop()
 
 		/* Report the current state of the population */
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
             mpisendreport=MPI_Send(&tables[0]->fitness, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
             mpisendreport=MPI_Send(&pop->gencnt, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
             mpisendreport=MPI_Send(&tables[0]->possible, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD);
@@ -365,7 +365,7 @@ int main_loop()
         	pvm_pkint(&tables[0]->possible, 1, 1);
         	pvm_pkint(tables[0]->subtotals, mod_fitnessnum, 1);
         	pvm_send(parent, MSG_REPORT);*/
-/*        	#else
+        	#else
         	printf("-------%d\n", pop->gencnt);
         	for(c=0;c<5;c++) {
                 	printf("%d (%d)", tables[c]->fitness, tables[c]->possible);
@@ -381,7 +381,6 @@ int main_loop()
 		}
 		fprintf(convfile, "\n");
         	fflush(convfile);
- */
         	#endif
 
 		/* Update the counter of the number of consequential
@@ -394,7 +393,7 @@ int main_loop()
 
 		/* Stop the main loop if the parent process was killed */
 
-            #ifdef USE_MPI
+            #ifndef HAVE_LIBPVM3
             mpiiprobe=MPI_Iprobe(0, MSG_MASTERKILL, MPI_COMM_WORLD, &flag, &status2);
 
         	if (mpiiprobe==MPI_SUCCESS) {
@@ -413,7 +412,7 @@ int main_loop()
 
 		if (g2==par_localtresh) {
 			c=1;
-			#ifdef USE_MPI
+			#ifndef HAVE_LIBPVM3
 			mpisend2=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, MPI_COMM_WORLD);
 			mpirecv=MPI_Recv(&c, 1, MPI_INT, parent, MSG_LOCALACK, MPI_COMM_WORLD, &status3);
 
@@ -430,7 +429,7 @@ int main_loop()
 
 			if (c) {
 				lsearch_table(tables[0]);
-				#ifdef USE_MPI
+				#ifndef HAVE_LIBPVM3
 				c=0;
 				mpisend3=MPI_Send(&c, 1, MPI_INT, parent, MSG_LOCALSYN, MPI_COMM_WORLD);
 /*
@@ -459,9 +458,9 @@ int main_loop()
 
 	        /* Get a task id of another node that will receive
 		 * migration from this node */
-		 #ifdef USE_MPI
+		 #ifndef HAVE_LIBPVM3
          mpiiprobe2=MPI_Iprobe(parent, MSG_SIBLING, MPI_COMM_WORLD, &flag2, &status4);
-         if (fmpiiprobe2lag2==MPI_SUCCESS) {
+         if (mpiiprobe2==MPI_SUCCESS) {
             mpirecv2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, &status5);
             debug(_("New sibling %x"), sibling);
 	     }
@@ -476,7 +475,7 @@ int main_loop()
         }
 }
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
 static void send_fitness_info()
 {
 	int n, counter=0, strsize;
@@ -528,6 +527,7 @@ static void send_fitness_info()
 
 int main(int argc, char *argv[])
 {
+    int mpimaker; // = MPI_Init(&argc, &argv);
     int c;
 
     char *xmlconfig;
@@ -537,7 +537,7 @@ int main(int argc, char *argv[])
 
     FILE *saved;
 
-    #ifdef USE_MPI
+    #ifndef HAVE_LIBPVM3
 	char *locale;
     
     int mpi_receve, mpi_receve2, strlen2;
@@ -550,7 +550,7 @@ int main(int argc, char *argv[])
     int mpir2;
     MPI_Status stat3;
     
-    int mpixmlsend;
+    int mpixmlnamesend;
 	int none=0;
     
 /*
@@ -582,17 +582,17 @@ int main(int argc, char *argv[])
         /* Parse command line options */
 
 /*	#ifndef USE_MPI
-    prefix="./";
-    restore=0;
+        prefix="./";
+        restore=0;
 	timeout=0;
+*/
 /*
 	#elifndef HAVE_LIBPVM3
         prefix="./";
         restore=0;
 	timeout=0;
-
-	#endif
 */
+//	#endif
 
 	verbosity=102;
 
@@ -605,7 +605,7 @@ int main(int argc, char *argv[])
 				  break;
                         case 'r': restore=1;
 				  break;
-/*
+
 			#elifndef HAVE_LIBPVM3
                         case 'o': prefix=strdup(optarg);
                                   break;
@@ -614,8 +614,7 @@ int main(int argc, char *argv[])
                         case 'r': restore=1;
 				  break;
 
-			#endif
-*/
+			#endif*/
 			case 'd': sscanf(optarg, "%d", &verbosity);
 				  verbosity+=100;
 				  break;
@@ -638,7 +637,7 @@ int main(int argc, char *argv[])
 	main_rand_init();
 
 	/* Get parent task id */
-        #ifdef USE_MPI
+        #ifndef HAVE_LIBPVM3
         //MPI_Comm_get_parent(&parent);
         parent=0;
 /*
@@ -675,7 +674,7 @@ int main(int argc, char *argv[])
 //	free(locale);
 //	#endif
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
     mpi_receve=MPI_Recv(&strlen2, 1, MPI_INT, parent, MSG_PARAMS, MPI_COMM_WORLD, &stat);
     mpi_receve2=MPI_Recv(&locale, strlen2, MPI_CHAR, parent, MSG_PARAMS, MPI_COMM_WORLD, &stat);
 
@@ -701,7 +700,7 @@ int main(int argc, char *argv[])
 
         /* Receive XML configuration file or get configuration filename
 	 * from the command line */
-	#ifdef USE_MPI
+	#ifndef HAVE_LIBPVM3
         xmlconfig=tmpnam(NULL);
 	if (file_recv(xmlconfig, parent, MSG_XMLDATA)) {
 		error(strerror(errno));
@@ -730,13 +729,13 @@ int main(int argc, char *argv[])
 	/* If XML configuration was stored in a temporary file, delete
 	 * it, because we no longer need it */
 
-        #ifdef USE_MPI
-        unlink(xmlconfig);
+ //       #ifndef HAVE_LIBPVM3
+ //       unlink(xmlconfig);
 /*
         #elifdef HAVE_LIBPVM3
         unlink(xmlconfig);
 */
-        #endif
+//        #endif
 
         /* Open file for convergence info */
 
@@ -748,6 +747,7 @@ int main(int argc, char *argv[])
 		convfile=fopen(filename, "w");
 	}
 	free(filename);
+*/
 /*
         #elifndef HAVE_LIBPVM3
 	filename=addprefix(prefix, "conv.txt");
@@ -757,13 +757,13 @@ int main(int argc, char *argv[])
 		convfile=fopen(filename, "w");
 	}
 	free(filename);
-
-        #endif
 */
+ //       #endif
+
 	/* Report how many fitness functions are defined
 	 * and what are their names */
 
-    #ifdef USE_MPI
+    #ifndef HAVE_LIBPVM3
 	send_fitness_info();
 /*
 	#ifdef HAVE_LIBPVM3
@@ -791,7 +791,7 @@ int main(int argc, char *argv[])
 
 	/* Check if we need to restore the population */
 
-        #ifdef USE_MPI
+        #ifndef HAVE_LIBPVM3
         mpir=MPI_Recv(&restore, 1, MPI_INT, parent, MSG_RESTOREPOP, MPI_COMM_WORLD, &stat2);
 
 /*
@@ -805,7 +805,7 @@ int main(int argc, char *argv[])
 	 * a random population */
 
         if(restore) {
-        #ifdef USE_MPI
+        #ifndef HAVE_LIBPVM3
 		pop=population_recv(parent, MSG_RESTOREPOP);
 
 		if(pop==NULL) {
@@ -857,7 +857,7 @@ int main(int argc, char *argv[])
     /* Get a task id of another node that will receive
 	 * migration from this node */
 
-        #ifdef USE_MPI
+        #ifndef HAVE_LIBPVM3
         mpir2=MPI_Recv(&sibling, 1, MPI_INT, parent, MSG_SIBLING, MPI_COMM_WORLD, &stat3);
 /*
         #elifdef HAVE_LIBPVM3
@@ -869,7 +869,7 @@ int main(int argc, char *argv[])
         /* Prepare signal handling routines that will stop
 	 * this node in case of timeout or user interrupt */
 
-        #ifdef USE_MPI
+        #ifndef HAVE_LIBPVM3
         //pvm_notify(PvmTaskExit, MSG_MASTERKILL, 1, &parent);
         /*
         #ifdef HAVE_LIBPVM3
@@ -898,7 +898,7 @@ int main(int argc, char *argv[])
 
 		/* Get a filename to save the result to */
 
-                #ifdef USE_MPI
+                #ifndef HAVE_LIBPVM3
                 xmlconfig=strdup(tmpnam(NULL));
                 /*
                 #elifdef HAVE_LIBPVM3
@@ -917,11 +917,11 @@ int main(int argc, char *argv[])
 		/* Send the written file to the parent */
 
 
-    #ifdef USE_MPI
+    #ifndef HAVE_LIBPVM3
 //		pvm_initsend(0);
 //		pvm_send(parent, MSG_RESULTDATA);
 		
-		mpixmlsend=MPI_Send(&none, 1, MPI_INT, parent, MSG_RESULTDATA, MPI_COMM_WORLD);
+		mpixmlnamesend=MPI_Send(&none, 1, MPI_INT, parent, MSG_RESULTDATA, MPI_COMM_WORLD);
 
 		if (file_send(xmlconfig, parent, MSG_RESULTDATA)) {
 	        	fatal(_("Can't send temporary file"));
@@ -939,7 +939,7 @@ int main(int argc, char *argv[])
 
 		/* Delete the temporary file */
 
-        #ifdef USE_MPI
+        #ifndef HAVE_LIBPVM3
                 unlink(xmlconfig);
 /*
 		#elifdef HAVE_LIBPVM3
@@ -952,24 +952,24 @@ int main(int argc, char *argv[])
 
 	/* Stop the MPI or PVM3 task */
 
-    #ifdef USE_MPI
-        MPI_Finalize();
+//    #ifndef HAVE_LIBPVM3
+//        MPI_Finalize();
 /*
 	#elifdef HAVE_LIBPVM3
         pvm_exit();
 */
-	#endif
+//	#endif
 
         /* Close file for convergence info */
-/*
-        #ifndef USE_MPI
-        fclose(convfile);
 
+//        #ifndef USE_MPI
+//        fclose(convfile);
+/*
         #elifndef HAVE_LIBPVM3
         fclose(convfile);
-
-        #endif
 */
+//        #endif
+
 	/* Free data structures */
 
 	cache_exit();

@@ -28,7 +28,7 @@
 #include "config.h"
 #endif
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
 
 #include "mpi.h"
 
@@ -37,10 +37,8 @@
 #include "error.h"
 #include "gettext.h"
 
-int running;
-int nodenum;
+int nodenum, running, mpimaker;
 int hostnum;
-int mpimaker;
 int *nodetid;
 struct nodeinfos *nodeinfo;
 
@@ -48,11 +46,12 @@ struct nodeinfos *nodeinfo;
 void node_update(int node)
 {
 	int sibling;
-	int mpisend;
+
+		int mpisend;
 
     sibling=nodeinfo[node].send;
 
-	mpisend= MPI_Send(&nodetid[sibling], 1, MPI_INT, nodetid[node], MSG_SIBLING, MPI_COMM_WORLD);
+		mpisend = MPI_Send(&nodetid[sibling], 1, MPI_INT, nodetid[node], MSG_SIBLING, MPI_COMM_WORLD);
 }
 
 /* Returns node number (for use with nodetid and nodeinfo arrays */
@@ -70,13 +69,13 @@ int node_find(int tid)
  * to send migration to another node. We also update nodeinfo struct */
 void node_stop(int num)
 {
-    int recv,send;
+        int recv,send;
 
-    send=nodeinfo[num].send;
-    recv=nodeinfo[num].recv;
+        send=nodeinfo[num].send;
+        recv=nodeinfo[num].recv;
 
-    nodeinfo[send].recv=recv;
-    nodeinfo[recv].send=send;
+        nodeinfo[send].recv=recv;
+        nodeinfo[recv].send=send;
 
 	nodeinfo[num].dead=1;
 
@@ -87,7 +86,7 @@ void node_stop(int num)
  * a node has stopped with local search and continues normal operation) */
 void node_restart(int num)
 {
-    int send;
+        int send;
 	int victim;
 
 	for(victim=0;victim<nodenum;victim++) {
@@ -174,23 +173,34 @@ int n, c, p, id;
 	/* malloc arrays */
 	nodetid = malloc(sizeof(*nodetid)*nodereq);
 	nodeinfo = malloc(sizeof(*nodeinfo)*nodereq);
-	if (nodetid == NULL || nodeinfo == NULL) fatal(strerror(errno));
+	if (nodetid == NULL || nodeinfo == NULL)
+    { 
+        printf("Fehler hier malloc array");
+        fatal(strerror(errno));
+    }
 
 
 	/* run chooser */
 	//run = choose(nodereq, info, hostnum);
 
 	/* start nodes */
+    
+    mpimaker = MPI_Comm_size(MPI_COMM_WORLD, &p);
+    mpimaker = MPI_Comm_rank(MPI_COMM_WORLD, &id);
+    printf("p: %d\n", p);
+    
+    hostnum = countlines("/mirror/hosts");
+    printf("hosts: %d\n", hostnum);
+    
 	running = 0;
 	for (n = 0; n<hostnum; n++) {
 		if (nodereq<1) {
-			error(_("Host '%s' is too slow and will be ignored."));   //	info[n].hi_name);
+			error(_("Host '%s' is too slow and will be ignored.")/*,
+				info[n].hi_name*/);
 		}
 		else {
-///////////???
-			mpimaker = MPI_Init(&nodereq, &argv);
-			mpimaker = MPI_Comm_rank(comm, &id);
-			mpimaker = MPI_Comm_size(comm, &p);
+			//mpimaker = MPI_Init(&nodereq, &argv);			
+    
 			if (p < nodereq)
 			{
 				printf("\n");
@@ -200,7 +210,7 @@ int n, c, p, id;
 			}
 
 			if (p<nodereq) {
-				error(_("Some nodes on host '%s' failed to start."));//, info[n].hi_name);
+				error(_("Some nodes on host 's' failed to start.")/*, info[n].hi_name*/);
 			}
 
 			if (mpimaker != MPI_SUCCESS) {
@@ -238,6 +248,22 @@ int n, c, p, id;
 	return running;
 }
 
+
+int countlines(char* file)
+{
+    FILE *fp= fopen(file,"r");
+    int lines=0, ch=0;
+    while(!feof(fp))
+    {
+        ch = fgetc(fp);
+        if(ch == '\n')
+        {
+            lines++;
+        }
+    }
+    fclose(fp);
+    return lines;
+}
 //#elifdef HAVE_LIBPVM3
 //
 //#include <pvm3.h>

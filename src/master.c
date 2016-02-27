@@ -33,7 +33,7 @@
 #include <locale.h>
 #endif
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
     #include "mpi.h"
     #include <signal.h>
 /*
@@ -52,17 +52,18 @@
 #include "error.h"
 #include "assert.h"
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
 #include "nodes.h"
 
 //#elifdef HAVE_LIBPVM3
 //  #include "nodes.h"
 #endif
+int count=0, flag, msend2, msend;
 
 char *cmd;
 char prefix[256];
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
 int ctrlc;
 int timeout_reached;
 
@@ -79,6 +80,8 @@ int mpimaker;
 //  int maxlocals;
 //  struct timeval t;
 #endif
+
+void sighandler(int num);
 
 void print_copyright()
 {
@@ -104,8 +107,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA\n"));
         printf("$Id: master.c,v 1.58 2006-08-29 14:32:24 avian Exp $\n");
         printf(_("Compile time options:\n"));
 
-        #ifdef USE_MPI
-        printf(_("\tParallel genetic algorithm (using PVM3)\n"));
+        #ifndef HAVE_LIBPVM3
+        printf(_("\tParallel genetic algorithm (using MPI)\n"));
 
 //        #elifdef HAVE_LIBPVM3
 //          printf(_("\tParallel genetic algorithm (using PVM3)\n"));
@@ -131,7 +134,7 @@ void print_syntax()
         printf(_("Usage: %s [OPTION]... [FILE]\n"), cmd);
         printf("\n");
 
-        #ifdef USE_MPI
+        #ifndef HAVE_LIBPVM3
         printf(_("\
   -n NODES              set number of computing nodes (default 4)\n"));
 
@@ -147,7 +150,7 @@ void print_syntax()
   -v                    display version, compile time options and\n\
                         copyright information\n"));
 
-  #ifdef USE_MPI
+  #ifndef HAVE_LIBPVM3
 	printf(_("\
   -l NODES              set number of computing nodes that are allowed to\n\
                         simultaneously perform local search (set to -1 for \n\
@@ -183,9 +186,11 @@ int main(int argc, char *argv[])
 	char *loc=NULL;
 
     int c;
+    
+    
 
-    #ifdef USE_MPI
-    mpimaker = MPI_Init(&argc, &argv);
+    #ifndef HAVE_LIBPVM3
+    int mpimaker = MPI_Init(&argc, &argv);
     int d, a, msgtag, sender, sendernum;
 	int n;
 
@@ -206,7 +211,6 @@ int main(int argc, char *argv[])
 
 	population *pop=NULL;
 
-	mpimaker = MPI_Init(&argc, &argv);
     
     int strsize, mpibcast, mpibcast2;
     
@@ -252,7 +256,7 @@ int main(int argc, char *argv[])
         strcpy(prefix, "./");
 	verbosity=102;
 
-        #ifdef USE_MPI
+        #ifndef HAVE_LIBPVM3
         restore=0;
 	maxlocals=1;
 	nodereq=4;
@@ -290,7 +294,7 @@ int main(int argc, char *argv[])
                                   exit(0);
                         case 'o': strncpy(prefix, optarg, 256);
                                   break;
-                        #ifdef USE_MPI
+                        #ifndef HAVE_LIBPVM3
                         case 'l': sscanf(optarg, "%d", &maxlocals);
                                   break;
                         case 'n': sscanf(optarg, "%d", &nodereq);
@@ -322,8 +326,8 @@ int main(int argc, char *argv[])
         printf("\n");
 
 	if(loc==NULL) {
-		info(_("Locale not supported by C library. "
-					"Using the fallback 'C' locale."));
+		//info(_("Locale not supported by C library. "
+		//			"Using the fallback 'C' locale."));
 		loc="C";
 	}
 
@@ -331,7 +335,7 @@ int main(int argc, char *argv[])
                 fatal(_("Missing file name. Try '%s -h' for more information."), cmd);
         }
 
-        #ifndef USE_MPI
+        #ifdef HAVE_LIBPVM3
         execvp("tablix2_kernel", argv);
 
         perror(cmd);
@@ -347,11 +351,10 @@ int main(int argc, char *argv[])
         /*** Start nodes ***/
 
 	assert(argv[argc]==NULL);
-
-
+    
 	node_startall(nodereq, &argv[1]);
 
-        if(nodenum==0) {
+        if(nodenum ==0) {
                 //pvm_exit();
                 MPI_Finalize();
                 fatal(_("all nodes failed."));
@@ -361,7 +364,7 @@ int main(int argc, char *argv[])
 		ngettext("PGA using %d node", "PGA using %d nodes", nodenum),
 		ngettext("on %d host", "on %d hosts", hostnum));
 
-        info(fn, nodenum, hostnum);
+        //info(fn, nodenum, hostnum);
 
 	if (maxlocals>0) {
 		debug(ngettext("maximum %d node will do local search",
@@ -381,7 +384,7 @@ int main(int argc, char *argv[])
         module=malloc(LINEBUFFSIZE);
         if (buff==NULL||module==NULL) {
                 perror(cmd);
-                for(c=0;c<nodenum;c++) pvm_kill(nodetid[c]);
+                //for(c=0;c<nodenum;c++) pvm_kill(nodetid[c]);
                 //pvm_exit();
                 MPI_Finalize();
                 exit(1);
@@ -391,7 +394,7 @@ int main(int argc, char *argv[])
         
         strsize=strlen(loc);
         
-        for(int count=0, count<nodenum, count++)
+        for(count=0; count<nodenum; count++)
         {
             mpibcast=MPI_Send(&strsize, 1, MPI_INT, count, MSG_PARAMS, MPI_COMM_WORLD);
             mpibcast2=MPI_Send(&loc, strsize, MPI_CHAR, count, MSG_PARAMS, MPI_COMM_WORLD);
@@ -410,7 +413,6 @@ int main(int argc, char *argv[])
 
         /*** Restore populations from a file if requested ***/
         if (restore) {
-        int msend, msend2;;
                 debug(_("Restoring saved populations"));
 
                 running=0;
@@ -421,7 +423,7 @@ int main(int argc, char *argv[])
 
 			if(pop==NULL) {
 
-				info(_("Failed to load %s"), fn);
+				//info(_("Failed to load %s"), fn);
                 a=0;
 
                 msend=MPI_Send(&a, 1, MPI_INT, nodetid[n], MSG_RESTOREPOP, MPI_COMM_WORLD);
@@ -442,7 +444,7 @@ int main(int argc, char *argv[])
         } else {
         a=0;
         int count;
-                for(count=0, count<nodenum, count++)
+                for(count=0; count<nodenum; count++)
                 {
                     msend2=MPI_Send(&a, 1, MPI_INT, count, MSG_RESTOREPOP, MPI_COMM_WORLD);
                 }
@@ -452,7 +454,7 @@ int main(int argc, char *argv[])
 
         /*** Send nodes TID to send migration to ***/
 
-        for(c=0;c<nodenum;c++) {
+        for(c=0; c<nodenum; c++) {
 		node_update(c);
 
         	if(verbosity>=MSG_DEBUG) {
@@ -461,8 +463,8 @@ int main(int argc, char *argv[])
 		}
         }
 
-       	if(verbosity>=MSG_DEBUG) printf("\n");
-        debug(_("parent ( %x ) listening\n"), pvm_mytid());
+       	//if(verbosity>=MSG_DEBUG) printf("\n");
+        //debug(_("parent ( %x ) listening\n"), pvm_mytid());
 
 	/*** Set up files for saving convergence info ***/
 
@@ -530,8 +532,8 @@ int main(int argc, char *argv[])
 
     while (cnt_stopped<nodenum) {
         recvi=MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &st1);
-        sender=st1(MPI_SOURCE);
-        msgtag=st1(MPI_TAG);
+        sender=st1.MPI_SOURCE;
+        msgtag=st1.MPI_TAG;
         
 		if(msgtag!=MSG_REPORT&&msgtag!=MSG_LOCALSYN) {
 			counter_clear();
@@ -544,7 +546,7 @@ int main(int argc, char *argv[])
         }
 
         if (msgtag==MSG_MODINFO) {
-            unpack1=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
+            unpack1=MPI_Unpack(*fn, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
 
 			debug(_("%x has %d fitness functions"), sender, a);
 
@@ -559,9 +561,9 @@ int main(int argc, char *argv[])
 			if(!restore) {
                 fprintf(convfiles[sendernum], "# Gen.\tFitness\tOK");
 				for(c=0;c<gnum;c++) {
-                    unpack2=MPI_Unpack(*fitbuff, 256, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
-                    unpack3=MPI_Unpack(*fitbuff, 256, *position, &fn, strsize, MPI_CHAR, MPI_COMM_WORLD);
-                    unpack4=MPI_Unpack(*fitbuff, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
+                    unpack2=MPI_Unpack(*fn, 256, *position, &strsize, 1, MPI_INT, MPI_COMM_WORLD);
+                    unpack3=MPI_Unpack(*fn, 256, *position, &fn, strsize, MPI_CHAR, MPI_COMM_WORLD);
+                    unpack4=MPI_Unpack(*fn, 256, *position, &a, 1, MPI_INT, MPI_COMM_WORLD);
 					fprintf(convfiles[sendernum], "\t%s%s", fn, a?" (M)":"");
 				}
 				fprintf(convfiles[sendernum], "\n");
@@ -603,7 +605,7 @@ int main(int argc, char *argv[])
 			    msg_new(sender, "%s: %s", module, buff);
             } else
                 if (msgtag==MSG_RESULTDATA) {
-                    info(_("node %x is uploading the result"), sender);
+                    //info(_("node %x is uploading the result"), sender);
                     snprintf(fn, 256, "%sresult%d.xml", prefix, sendernum);
 
 			         if (file_recv(fn, sender, MSG_RESULTDATA)) {
@@ -619,10 +621,10 @@ int main(int argc, char *argv[])
                         error(_("node %x is reporting too soon"), sender);
                     } else
 		              if (msgtag==MSG_REPORT) {
-                        recvi5=MPI_Recv(&c, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
-                        recvi6=MPI_Recv(&a, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
-                        recvi7=MPI_Recv(&d, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
-                        recvi8=MPI_Recv(&subtotals, gnum, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
+                        recvi5=MPI_Recv(&c, 1, MPI_INT, MPI_ANY_SOURCE, MSG_REPORT, MPI_COMM_WORLD, &st2);
+                        recvi6=MPI_Recv(&a, 1, MPI_INT, MPI_ANY_SOURCE, MSG_REPORT, MPI_COMM_WORLD, &st2);
+                        recvi7=MPI_Recv(&d, 1, MPI_INT, MPI_ANY_SOURCE, MSG_REPORT, MPI_COMM_WORLD, &st2);
+                        recvi8=MPI_Recv(&subtotals, gnum, MPI_INT, MPI_ANY_SOURCE, MSG_REPORT, MPI_COMM_WORLD, &st2);
 
 			            if(verbosity>=MSG_REPORT) {
                             counter_update(sender, c, d, a);
@@ -639,7 +641,7 @@ int main(int argc, char *argv[])
                         #endif
                     } else
                     if (msgtag==MSG_POPDATA) {
-                        info(_("receiving population from %x"), sender);
+                        //info(_("receiving population from %x"), sender);
 
                         snprintf(fn, 256, "%ssave%d.txt", prefix, sendernum);
 
@@ -651,7 +653,7 @@ int main(int argc, char *argv[])
                         node_stop(sendernum);
 		          } else
                     if (msgtag==MSG_LOCALSYN) {
-                        reccvi4=MPI_Recv(&c, 1, MPI_INT, parent, MSG_REPORT, MPI_COMM_WORLD, &st2);
+                        recvi4=MPI_Recv(&c, 1, MPI_INT, MPI_ANY_SOURCE, MSG_REPORT, MPI_COMM_WORLD, &st2);
 
                         if(!c) {
                             numlocals--;
@@ -690,13 +692,13 @@ int main(int argc, char *argv[])
         }
 	}
 
-	if(cnt_recv<1) {
+	/*if(cnt_recv<1) {
 		info(_("No results were received"));
 	} else if(cnt_recv<cnt_stopped) {
         info(_("Some results were received"));
         } else {
 		info(_("All results were received"));
-	   }
+	   }*/
 
 	if(verbosity>=MSG_INFO&&cnt_recv>0) {
 		gettimeofday(&end, NULL);
@@ -732,7 +734,7 @@ int main(int argc, char *argv[])
    #endif
 }
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
 void sighandler(int num)
 {
     int mpisend;
@@ -744,7 +746,7 @@ void sighandler(int num)
 	}
         if (ctrlc<1) {
                 c=0;
-                for(int count=0; count<nodenum; count++)
+                for(count=0; count<nodenum; count++)
                 {
                     mpisend=MPI_Send(&c, 1, MPI_INT, count, MSG_SENDPOP, MPI_COMM_WORLD);
                 }

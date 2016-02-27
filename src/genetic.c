@@ -28,7 +28,7 @@
 #include "config.h"
 #endif
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
     #include "mpi.h"
 /*
 #elifdef HAVE_LIBPVM3
@@ -182,7 +182,7 @@ void new_generation(population *pop)
 
 	int t1,t2,t3;
 
-    #ifdef USE_MPI
+    #ifndef HAVE_LIBPVM3
 	int migrsize;
 /*
 	#elifdef HAVE_LIBPVM3
@@ -196,7 +196,7 @@ void new_generation(population *pop)
 
 	/* Send migration */
 
-	#ifdef USE_MPI
+	#ifndef HAVE_LIBPVM3
 	if (pop->gencnt%par_migrtime==0) {
 		debug(_("sending migration to %x"), sibling);
 
@@ -277,11 +277,11 @@ void new_generation(population *pop)
 
 	/* Receive migration */
 
-    #ifdef USE_MPI
-        if ((MPI_Iprobe(MPI_ANY_SOURCE, MSG_MIGRATION, MPI_COMM_WORLD, &flag, &status)==MPI_SUCCSESS)){
+    #ifndef HAVE_LIBPVM3
+        if (((MPI_Iprobe(MPI_ANY_SOURCE, MSG_MIGRATION, MPI_COMM_WORLD, &flag, &status))==MPI_SUCCESS)){
 		int msgtag, sender;
                 
-                sender=status(MPI_SOURCE);
+                sender=status.MPI_SOURCE;
                 msgtag=MSG_MIGRATION;
                 
 		debug("receiving migration from %x", sender);

@@ -25,7 +25,7 @@
 #include "config.h"
 #endif
 
-#ifdef USE_MPI
+#ifndef HAVE_LIBPVM3
 #include "mpi.h"
 
 #include "main.h"
